@@ -1,2 +1,24 @@
-/.env
-/node_modules/
+# .gitignore
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Sequelize configuration (JavaScript version)
+# config/config.json # Remove or comment out if you switched
+config/config.js
+.sequelizerc
+
+# Build artifacts
+public/css/output.css
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Operating system files
+.DS_Store
+Thumbs.db
