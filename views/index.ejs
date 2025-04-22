@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="/css/output.css">
     <style>
         #content {
-            border: 1px dashed #ccc;
+            /* border: 1px dashed #ccc; */ /* Can remove this now */
             padding: 20px;
-            min-height: 300px;
+            min-height: 300px; /* Keep a min-height for visual consistency */
             margin-top: 20px;
         }
     </style>
@@ -26,12 +26,13 @@
 </header>
 
 <main id="content" class="container mx-auto mt-5 p-5 bg-white rounded shadow">
-    <p>Please select a view.</p>
+    <p class="text-center text-gray-500">Initializing...</p>
 </main>
 
 <footer class="text-center mt-10 text-gray-600 text-sm">
     <p>&copy; 2025 Aristocrat Messenger</p>
 </footer>
 
+<script src="/js/app.js"></script>
 </body>
 </html>
