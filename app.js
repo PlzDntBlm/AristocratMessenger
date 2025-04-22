@@ -31,7 +31,15 @@ app.use(session({
         // TODO: Consider using a session store like connect-session-sequelize for production
     }
 }));
-// TODO: Add middleware to make session data available in templates (res.locals) if needed later
+
+// --- Make Session Data Available to Templates ---
+// This middleware runs for every request BEFORE the routers
+app.use((req, res, next) => {
+    res.locals.isLoggedIn = !!req.session.userId; // Boolean: true if userId exists in session
+    res.locals.username = req.session.username || null; // Username or null
+    // You can add other session data to res.locals if needed
+    next(); // Continue to the next middleware/router
+});
 
 // --- Middleware ---
 // Set EJS as the view engine

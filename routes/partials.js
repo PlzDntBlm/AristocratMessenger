@@ -7,12 +7,13 @@
  */
 const express = require('express');
 const router = express.Router();
+const isAuthenticated = require('../middleware/authMiddleware').isAuthenticated;
 
 /**
  * GET /partials/home
  * Serves the home page partial view.
  */
-router.get('/home', (req, res) => {
+router.get('/home', isAuthenticated, (req, res) => {
     // TODO: Add any data fetching needed for the home partial later
     res.render('partials/home', {
         // Pass data needed specifically by this partial

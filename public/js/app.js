@@ -32,7 +32,18 @@ const loadPartial = async (partialName) => {
     try {
         const response = await fetch(`/partials/${partialName}`);
         if (!response.ok) {
-            // TODO: Handle different HTTP error statuses appropriately
+            if (response.status === 401) { // *** ADD THIS CHECK ***
+                // Unauthorized - User is not logged in or session expired
+                console.warn("Unauthorized access attempt to partial:", partialName);
+                // Redirect to login page
+                loadPartial('login'); // Load the login form
+                // Update URL hash manually if needed, or handle via history API later
+                window.location.hash = 'login';
+                // Display a message (optional)
+                // contentElement.innerHTML = '<p class="text-center text-red-500">Please log in to access this page.</p>';
+                return; // Stop further processing for this partial load
+            }
+            // Handle other errors
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const html = await response.text();
@@ -139,6 +150,41 @@ const handleFormSubmit = async (event) => {
 };
 
 
+// --- Add Logout Handler ---
+const handleLogout = async () => {
+    console.log("Attempting logout...");
+    // TODO: Add visual feedback (e.g., disable button)
+    try {
+        const response = await fetch('/auth/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json' // Adjust if needed, though body is empty
+            }
+        });
+        const responseText = await response.text();
+
+        if (!response.ok) {
+            throw new Error(`Logout failed: ${response.status} - ${responseText}`);
+        }
+
+        console.log("Logout successful:", responseText);
+        // Force reload or redirect to login after successful logout
+        // Option 1: Reload the whole page (simplest)
+        // window.location.reload();
+        // Option 2: Load login partial and clear hash
+        loadPartial('login');
+        window.location.hash = 'login'; // Or clear hash: window.location.hash = '';
+
+    } catch (error) {
+        console.error("Logout error:", error);
+        // TODO: Display error message to user
+        alert("Logout failed. Please try again."); // Simple alert for now
+    } finally {
+        // TODO: Remove visual feedback
+    }
+};
+
+
 /**
  * Initializes the SPA functionality.
  * Attaches event listeners using event delegation on the #content element
@@ -172,22 +218,29 @@ const initApp = () => {
         }
     });
 
-    // Also listen for clicks on the main header navigation (if separate from #content)
-    const headerNav = document.querySelector('header nav');
-    if(headerNav) {
-        headerNav.addEventListener('click', (event) => {
+    // Listener for header navigation (including logout button)
+    const header = document.querySelector('header'); // Listen on header or body for delegation
+    if(header) {
+        header.addEventListener('click', (event) => {
             const targetLink = event.target.closest('a[data-partial]');
+            const logoutButton = event.target.closest('#logout-button'); // *** ADD THIS CHECK ***
+
             if (targetLink) {
+                // Handle navigation clicks
                 event.preventDefault();
                 const partialName = targetLink.getAttribute('data-partial');
                 if (partialName) {
                     loadPartial(partialName);
-                    // TODO: Update browser history using History API
+                    // TODO: Update browser history
                 }
+            } else if (logoutButton) { // *** ADD THIS ELSE IF ***
+                // Handle logout button click
+                event.preventDefault();
+                handleLogout();
             }
         });
     } else {
-        console.warn("Header navigation element not found for click handling.");
+        console.warn("Header element not found for click handling.");
     }
 
 
