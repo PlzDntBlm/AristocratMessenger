@@ -81,11 +81,15 @@ router.post('/login', async (req, res) => {
 
         if (match) {
             // Passwords match - Login successful!
-            console.log(`Login successful for user: <span class="math-inline">\{user\.username\} \(</span>{user.email})`);
-            // --- SESSION MANAGEMENT WILL GO HERE ---
-            // TODO: Step 1: Create a session for the user (e.g., req.session.userId = user.id)
-            // TODO: Step 2: Send response indicating success, maybe redirect to home partial via client-side JS
-            res.status(200).send(`Login successful for ${user.username}! Session handling TBD.`);
+            console.log(`Login successful for user: ${user.username} (${user.email})`);
+
+            // --- Store user info in session ---
+            req.session.userId = user.id; // Store user's ID
+            req.session.username = user.username; // Store username (optional, maybe useful for display)
+            // TODO: You might store other non-sensitive info like roles if needed
+
+            // Send success response (client-side will handle redirect)
+            res.status(200).send(`Login successful for ${user.username}! Session created.`);
         } else {
             // Passwords don't match
             console.log(`Login attempt failed: Incorrect password for email ${email}`);
@@ -100,12 +104,22 @@ router.post('/login', async (req, res) => {
 
 /**
  * POST /auth/logout
- * Handles user logout.
- * TODO: Implement logout logic (destroy session or invalidate token)
+ * Handles user logout by destroying the session.
  */
-router.post('/logout', (req, res) => {
-    // Implementation pending...
-    res.status(501).send("Logout endpoint not implemented yet.");
+router.post('/logout', (req, res, next) => { // Added 'next' for error handling consistency
+    req.session.destroy((err) => {
+        if (err) {
+            console.error("Session destruction error:", err);
+            // TODO: Handle error more gracefully
+            return next(err); // Pass error to Express error handler
+        }
+        // Session destroyed successfully
+        // Clear the cookie explicitly (optional, helps ensure it's gone)
+        res.clearCookie('connect.sid'); // Use the default cookie name, change if you configured a different name
+        console.log("User logged out, session destroyed.");
+        // TODO: Redirect client-side to login page after logout
+        res.status(200).send("Logout successful.");
+    });
 });
 
 

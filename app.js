@@ -6,9 +6,9 @@
 
 // Load environment variables
 require('dotenv').config();
-
 const express = require('express');
 const path = require('path');
+const session = require('express-session');
 
 // Import Routers
 const partialsRouter = require('./routes/partials');
@@ -16,6 +16,22 @@ const authRouter = require('./routes/auth'); // Import the auth router
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// --- Session Configuration ---
+// IMPORTANT: Session middleware should come BEFORE routers that use sessions
+app.use(session({
+    secret: process.env.SESSION_SECRET, // Use the secret from your .env file
+    resave: false,                      // Don't save session if unmodified
+    saveUninitialized: false,           // Don't create session until something stored
+    cookie: {
+        // secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (requires HTTPS)
+        secure: false, // Set to true if your development environment uses HTTPS
+        httpOnly: true, // Prevents client-side JS from reading the cookie
+        maxAge: 1000 * 60 * 60 * 24 // Cookie expiration time (e.g., 24 hours in milliseconds)
+        // TODO: Consider using a session store like connect-session-sequelize for production
+    }
+}));
+// TODO: Add middleware to make session data available in templates (res.locals) if needed later
 
 // --- Middleware ---
 // Set EJS as the view engine
