@@ -57,11 +57,45 @@ router.post('/register', async (req, res) => {
 /**
  * POST /auth/login
  * Handles user login form submission.
- * TODO: Implement login logic (find user, compare password with bcrypt.compare)
  */
 router.post('/login', async (req, res) => {
-    // Implementation pending...
-    res.status(501).send("Login endpoint not implemented yet.");
+    // TODO: Add input validation (e.g., is email valid format?)
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).send("Email and password are required.");
+    }
+
+    try {
+        // Find the user by email
+        const user = await User.findOne({ where: { email: email } });
+
+        if (!user) {
+            // User not found (send a generic error message for security)
+            console.log(`Login attempt failed: User not found for email ${email}`);
+            return res.status(401).send("Invalid email or password."); // Unauthorized
+        }
+
+        // Compare submitted password with the stored hash
+        const match = await bcrypt.compare(password, user.password);
+
+        if (match) {
+            // Passwords match - Login successful!
+            console.log(`Login successful for user: <span class="math-inline">\{user\.username\} \(</span>{user.email})`);
+            // --- SESSION MANAGEMENT WILL GO HERE ---
+            // TODO: Step 1: Create a session for the user (e.g., req.session.userId = user.id)
+            // TODO: Step 2: Send response indicating success, maybe redirect to home partial via client-side JS
+            res.status(200).send(`Login successful for ${user.username}! Session handling TBD.`);
+        } else {
+            // Passwords don't match
+            console.log(`Login attempt failed: Incorrect password for email ${email}`);
+            return res.status(401).send("Invalid email or password."); // Unauthorized
+        }
+
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).send("An error occurred during login.");
+    }
 });
 
 /**

@@ -106,14 +106,19 @@ const handleFormSubmit = async (event) => {
                 // TODO: Update browser history for login page (e.g., history.pushState({}, '', '#login'))
             }, 1500); // Wait 1.5 seconds
         } else if (form.id === 'login-form') {
-            // TODO: Handle successful login (e.g., store token/session info, load home partial)
-            console.log('Login successful (handler TBD):', responseText);
+            // Login successful (according to server response)
+            console.log('Login successful (Session TBD):', responseText);
             if (messageElement) {
-                messageElement.textContent = 'Login successful! (Redirect TBD)'; // Placeholder
+                messageElement.textContent = 'Login successful! Loading home...'; // Updated placeholder
                 messageElement.className = 'mt-4 text-sm text-green-600';
             }
-            // Example: loadPartial('home');
-            // Example: history.pushState({}, '', '#home');
+            // TODO: Store session/token info from response if applicable later
+            // Redirect to home partial
+            setTimeout(() => {
+                loadPartial('home'); // Load the home partial on successful login
+                // TODO: Update browser history for home page
+                // history.pushState({ partial: 'home' }, '', '#home');
+            }, 1000); // Wait 1 second
         } else {
             // Handle other forms if needed in the future
             console.log('Form submitted successfully:', responseText);
