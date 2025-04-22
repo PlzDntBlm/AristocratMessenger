@@ -14,10 +14,13 @@ app.set('views', path.join(__dirname, 'views')); // Tell Express where to find v
 // Serve static files (CSS, client-side JS) from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Basic route for the homepage (we'll make this dynamic later)
+// Route to serve the main SPA shell
 app.get('/', (req, res) => {
-    // For now, just send a simple message. We'll render index.ejs soon.
-    res.send('Welcome to Aristocrat Messenger!');
+    res.render('index', {
+        // You can pass variables to your EJS template here if needed
+        // For example:
+        // pageTitle: 'Home'
+    });
 });
 
 // Start the server
