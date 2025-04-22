@@ -11,7 +11,8 @@ const express = require('express');
 const path = require('path');
 
 // Import Routers
-const partialsRouter = require('./routes/partials'); // Import the partials router
+const partialsRouter = require('./routes/partials');
+const authRouter = require('./routes/auth'); // Import the auth router
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,32 +25,40 @@ app.set('views', path.join(__dirname, 'views')); // Tell Express where to find v
 // Serve static files (CSS, client-side JS) from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// TODO: Add middleware for parsing request bodies (e.g., express.json(), express.urlencoded()) when forms/APIs are added.
+// Body Parsers
+app.use(express.urlencoded({ extended: true })); // Parses URL-encoded form data
+// app.use(express.json()); // Add if you need to parse JSON bodies
+
 // TODO: Add middleware for session management (e.g., express-session) when auth is added.
 // TODO: Add custom middleware (e.g., for logging, auth checks, setting res.locals) as needed.
 
 // --- Routes ---
-// Mount the partials router
-app.use('/partials', partialsRouter); // All routes in partials.js will be prefixed with /partials
+// Mount the routers
+app.use('/partials', partialsRouter); // Serves HTML partials for the SPA
+app.use('/auth', authRouter);         // Handles authentication requests (register, login, logout)
 
 /**
  * GET /
  * Route to serve the main Single Page Application (SPA) shell.
- * This renders the main layout, and client-side JS will handle loading content.
  */
 app.get('/', (req, res) => {
     res.render('index', {
-        // Pass any data needed by the main layout itself
         // pageTitle: 'Aristocrat Messenger' // Example
     });
     // TODO: Potentially check authentication status here and pass user info to the template
 });
 
-// TODO: Add other top-level routes if necessary (e.g., /auth routes for login/logout POST requests)
-
 // --- Error Handling ---
 // TODO: Add a basic 404 Not Found handler
+app.use((req, res, next) => {
+    res.status(404).send("Sorry, that route doesn't exist.");
+});
+
 // TODO: Add a more robust error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+});
 
 // --- Server Activation ---
 app.listen(PORT, () => {
