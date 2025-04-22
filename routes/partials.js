@@ -30,6 +30,16 @@ router.get('/login', (req, res) => {
     });
 });
 
-// TODO: Add routes for other partials (register, cabinet, scriptorium, etc.) as they are created.
+/**
+ * GET /partials/register
+ * Serves the registration page partial view.
+ */
+router.get('/register', (req, res) => {
+    res.render('partials/register', {
+        // Pass data needed specifically by this partial if any
+    });
+});
+
+// TODO: Add routes for other partials (cabinet, scriptorium, etc.) as they are created.
 
 module.exports = router;
