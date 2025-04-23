@@ -1,5 +1,5 @@
 /**
- * app.js
+ * app.js (Server-Side)
  * Main application file for Aristocrat Messenger.
  * Sets up the Express server, middleware, routes, and starts listening for requests.
  */
@@ -8,11 +8,12 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const session = require('express-session');
+const session = require('express-session'); // Require session
 
 // Import Routers
 const partialsRouter = require('./routes/partials');
-const authRouter = require('./routes/auth'); // Import the auth router
+const authRouter = require('./routes/auth');
+const apiRouter = require('./routes/api'); // Require the new API router
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,7 +42,7 @@ app.use((req, res, next) => {
     next(); // Continue to the next middleware/router
 });
 
-// --- Middleware ---
+// --- Other Core Middleware ---
 // Set EJS as the view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views')); // Tell Express where to find view files
@@ -49,39 +50,42 @@ app.set('views', path.join(__dirname, 'views')); // Tell Express where to find v
 // Serve static files (CSS, client-side JS) from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Body Parsers
+// Body Parsers (Place AFTER static, BEFORE routes)
+app.use(express.json()); // Parses incoming JSON request bodies
 app.use(express.urlencoded({ extended: true })); // Parses URL-encoded form data
-// app.use(express.json()); // Add if you need to parse JSON bodies
 
-// TODO: Add middleware for session management (e.g., express-session) when auth is added.
-// TODO: Add custom middleware (e.g., for logging, auth checks, setting res.locals) as needed.
 
 // --- Routes ---
-// Mount the routers
-app.use('/partials', partialsRouter); // Serves HTML partials for the SPA
-app.use('/auth', authRouter);         // Handles authentication requests (register, login, logout)
+// Mount the routers (Place AFTER core middleware)
+app.use('/api', apiRouter); // Mount the API router under /api
+app.use('/partials', partialsRouter); // Keep this for now? Or remove if fully client-side? (Let's keep for now)
+app.use('/auth', authRouter);
 
 /**
  * GET /
  * Route to serve the main Single Page Application (SPA) shell.
+ * This should be defined only once.
  */
 app.get('/', (req, res) => {
+    // res.locals are automatically available in templates rendered via res.render
     res.render('index', {
+        // You can pass additional page-specific variables here if needed
         // pageTitle: 'Aristocrat Messenger' // Example
     });
-    // TODO: Potentially check authentication status here and pass user info to the template
 });
 
-// --- Error Handling ---
-// TODO: Add a basic 404 Not Found handler
+// --- Error Handling --- (Place AFTER all routes)
+// Basic 404 Not Found handler
 app.use((req, res, next) => {
     res.status(404).send("Sorry, that route doesn't exist.");
+    // TODO: Consider rendering a 404 EJS template
 });
 
-// TODO: Add a more robust error handling middleware
+// General error handling middleware (must have 4 arguments)
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Something broke!');
+    console.error("Unhandled Error:", err.stack || err);
+    res.status(500).send('Something broke on the server!');
+    // TODO: Consider rendering a 500 EJS template, especially for production
 });
 
 // --- Server Activation ---
