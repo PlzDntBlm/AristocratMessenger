@@ -58,6 +58,74 @@ function renderContent(content) {
     // TODO: Potentially run scripts or attach listeners after rendering content
 }
 
-// TODO: Add functions to render specific pages/components like renderLoginPage(), renderRegisterPage(), renderHomePage(user) etc.
+/**
+ * Renders the Login page/component into the main content area.
+ */
+function renderLoginPage() {
+    console.log("UI: Rendering Login Page");
+    const loginHTML = `
+        <div id="partial-login">
+            <h2 class="text-xl font-semibold mb-4">Login</h2>
+            <form id="login-form" method="POST" action="/auth/login">
+                <div class="mb-4">
+                    <label for="login-email" class="block text-gray-700 text-sm font-bold mb-2">Email:</label>
+                    <input type="email" id="login-email" name="email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="your.email@example.com" required>
+                </div>
+                <div class="mb-6">
+                    <label for="login-password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
+                    <input type="password" id="login-password" name="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" placeholder="******************" required>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
+                        Sign In
+                    </button>
+                    <a href="#register" data-route="register" class="inline-block align-baseline font-bold text-sm text-green-500 hover:text-green-800">
+                        Need an account? Register
+                    </a>
+                </div>
+                <div id="login-message" class="mt-4 text-sm"></div>
+            </form>
+        </div>
+    `;
+    renderContent(loginHTML); // Use the existing renderContent function
+}
 
-export { renderNavbar, renderContent };
+/**
+ * Renders the Register page/component into the main content area.
+ */
+function renderRegisterPage() {
+    console.log("UI: Rendering Register Page");
+    const registerHTML = `
+        <div id="partial-register">
+            <h2 class="text-xl font-semibold mb-4">Register New Account</h2>
+            <form id="register-form" method="POST" action="/auth/register">
+                <div class="mb-4">
+                    <label for="register-username" class="block text-gray-700 text-sm font-bold mb-2">Username:</label>
+                    <input type="text" id="register-username" name="username" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Choose a username" required>
+                </div>
+                <div class="mb-4">
+                    <label for="register-email" class="block text-gray-700 text-sm font-bold mb-2">Email:</label>
+                    <input type="email" id="register-email" name="email" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="your.email@example.com" required>
+                </div>
+                <div class="mb-6">
+                    <label for="register-password" class="block text-gray-700 text-sm font-bold mb-2">Password:</label>
+                    <input type="password" id="register-password" name="password" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline" placeholder="******************" required>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
+                        Register
+                    </button>
+                    <a href="#login" data-route="login" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800">
+                        Already have an account? Login
+                    </a>
+                </div>
+                <div id="register-message" class="mt-4 text-sm"></div>
+            </form>
+        </div>
+    `;
+    renderContent(registerHTML); // Use the existing renderContent function
+}
+
+// TODO: Add functions to render specific pages/components like renderHomePage(user) etc.
+
+export { renderNavbar, renderContent, renderLoginPage, renderRegisterPage };

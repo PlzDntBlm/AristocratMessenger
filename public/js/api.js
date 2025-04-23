@@ -13,10 +13,41 @@ async function checkAuthStatus() {
     return await getData('/api/auth/status');
 }
 
+/**
+ * Attempts to log the user in via the backend API.
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<object>} - Promise resolving to the server's JSON response (e.g., { success: boolean, user?: object, message?: string })
+ */
+async function loginUser(email, password) {
+    console.log(`API: Attempting login for ${email}...`);
+    return await postData('/auth/login', { email, password });
+}
+
+/**
+ * Logs the user out via the backend API.
+ * @returns {Promise<object>} - Promise resolving to the server's JSON response (e.g., { success: boolean, message?: string })
+ */
+async function logoutUser() {
+    console.log('API: Attempting logout...');
+    // Using postData assuming the server endpoint might check Content-Type, even if body is empty.
+    // Alternatively, use fetch directly if preferred for empty body POST.
+    return await postData('/auth/logout', {});
+}
+
+/**
+ * Attempts to register a new user via the backend API.
+ * @param {string} username
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<object>} - Promise resolving to the server's JSON response (e.g., { success: boolean, message?: string })
+ */
+async function registerUser(username, email, password) {
+    console.log(`API: Attempting registration for <span class="math-inline">\{username\} \(</span>{email})...`);
+    return await postData('/auth/register', { username, email, password });
+}
+
 // TODO: Add functions like:
-// async function loginUser(email, password) { ... }
-// async function logoutUser() { ... }
-// async function registerUser(username, email, password) { ... }
 // async function loadComponentData(componentName) { ... }
 
 // Example structure for fetch calls
@@ -84,4 +115,11 @@ async function getData(url = '') {
 
 
 // Export functions as they are added
-export { postData, getData , checkAuthStatus/*, loginUser, logoutUser ... */ };
+export {
+    postData,
+    getData,
+    checkAuthStatus,
+    loginUser,
+    logoutUser,
+    registerUser
+};
