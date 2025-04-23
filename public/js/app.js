@@ -116,13 +116,19 @@ async function initializeApp() {
 
     // Check initial authentication status
     try {
-        // const authStatus = await api.checkAuthStatus(); // TODO: Implement api.checkAuthStatus() using new backend route
-        // Temp placeholder
-        const authStatus = { isLoggedIn: false, user: null }; // MOCK logged out state
-        setAuthState(authStatus.isLoggedIn, authStatus.user);
+        // Remove or comment out the mock placeholder:
+        // const authStatus = { isLoggedIn: false, user: null }; // MOCK logged out state
+
+        console.log("Checking auth status via API...");
+        const authStatus = await api.checkAuthStatus(); // Call the function from api.js
+        console.log("Received auth status:", authStatus);
+
+        // Update the client state based on the REAL response from the server
+        setAuthState(authStatus.isLoggedIn, authStatus.user || null); // Use the actual data
     } catch (error) {
         console.error("Failed to fetch initial auth status:", error);
         setAuthState(false, null); // Assume logged out on error
+        // TODO: Maybe display an error message to the user in the UI?
     }
 
     // Initial UI render based on state

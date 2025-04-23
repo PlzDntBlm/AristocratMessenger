@@ -3,8 +3,17 @@
  * Handles all communication with the backend API using fetch.
  */
 
+/**
+ * Checks the user's current authentication status with the server.
+ * @returns {Promise<object>} - Promise resolving to the auth status object (e.g., { isLoggedIn: boolean, user: object|null })
+ */
+async function checkAuthStatus() {
+    console.log('API: Checking auth status...');
+    // Use the getData helper function defined earlier in this file
+    return await getData('/api/auth/status');
+}
+
 // TODO: Add functions like:
-// async function checkAuthStatus() { ... }
 // async function loginUser(email, password) { ... }
 // async function logoutUser() { ... }
 // async function registerUser(username, email, password) { ... }
@@ -75,4 +84,4 @@ async function getData(url = '') {
 
 
 // Export functions as they are added
-export { postData, getData /*, checkAuthStatus, loginUser, logoutUser ... */ };
+export { postData, getData , checkAuthStatus/*, loginUser, logoutUser ... */ };
