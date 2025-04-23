@@ -5,7 +5,7 @@
  */
 import * as api from './api.js'; // Import API functions
 import { getState, setAuthState } from './state.js'; // Import state functions
-import { renderNavbar, renderContent, renderLoginPage, renderRegisterPage /*, renderHomePage... */ } from './ui.js';
+import { renderNavbar, renderContent, renderLoginPage, renderRegisterPage, renderHomePage } from './ui.js';
 
 // --- Global Elements / Initial Setup ---
 // TODO: Consider moving DOM element selections to ui.js if preferred
@@ -19,7 +19,7 @@ function handleNavClick(event) {
 
     if (targetLink) {
         event.preventDefault();
-        const route = targetLink.getAttribute('data-route');
+        let route = targetLink.getAttribute('data-route');
         console.log(`Routing to: ${route}`);
 
         // --- Call specific rendering function based on route ---
@@ -31,8 +31,14 @@ function handleNavClick(event) {
                 renderRegisterPage();
                 break;
             case 'home':
-                // TODO: Implement renderHomePage()
-                renderContent('<p>Home Page Component TBD</p>');
+                // Check if user is logged in before rendering home
+                if (getState().isLoggedIn) {
+                    renderHomePage(getState().currentUser); // Call the new function
+                } else {
+                    console.warn("Attempted to navigate to #home while logged out.");
+                    renderLoginPage(); // Redirect to login if not logged in
+                    route = 'login'; // Update route for hash update
+                }
                 break;
             // TODO: Add cases for other routes (scriptorium, cabinet, etc.)
             default:
@@ -97,8 +103,7 @@ async function handleAuthFormSubmit(event) {
             if (result.success) {
                 setAuthState(true, result.user); // Update client state with user data from response
                 renderNavbar(getState());       // Update navbar
-                // TODO: Render home page component instead of placeholder
-                renderContent(`<p>Login successful! Welcome ${result.user.username}. Home page TBD.</p>`);
+                renderHomePage(result.user); // Use user data from API response
                 window.location.hash = 'home'; // Navigate to home view
             } else {
                 // Error handled by the catch block as api functions throw on non-ok response
@@ -192,13 +197,13 @@ async function initializeApp() {
         switch(initialRoute) {
             case 'home':
                 // TODO: Implement renderHomePage()
-                renderContent(`<p>Welcome back ${getState().currentUser?.username}. Home page TBD.</p>`); // Placeholder
+                renderHomePage(getState().currentUser);
                 break;
             // TODO: Add cases for other logged-in routes
             default:
                 console.warn(`Unhandled logged-in route: ${initialRoute}`);
                 // Fallback to home page TBD
-                renderContent(`<p>Welcome back ${getState().currentUser?.username}. Home page TBD.</p>`); // Placeholder
+                renderHomePage(getState().currentUser);
                 if (window.location.hash !== '#home') window.location.hash = 'home';
         }
 
