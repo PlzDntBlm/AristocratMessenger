@@ -43,7 +43,7 @@ async function logoutUser() {
  * @returns {Promise<object>} - Promise resolving to the server's JSON response (e.g., { success: boolean, message?: string })
  */
 async function registerUser(username, email, password) {
-    console.log(`API: Attempting registration for <span class="math-inline">\{username\} \(</span>{email})...`);
+    console.log(`API: Attempting registration for ${username} \(${email})...`);
     return await postData('/auth/register', { username, email, password });
 }
 
