@@ -18,25 +18,40 @@ if (!navElement) {
  * @param {object} state - The current application state from state.js
  */
 function renderNavbar(state) {
-    if (!navElement) return;
+    // Find the navigation element in the header
+    const navElement = document.querySelector('header nav');
+    if (!navElement) {
+        console.warn("Warning: Header nav element not found for rendering!");
+        return; // Can't render if the container doesn't exist
+    }
+
     console.log('Rendering Navbar for state:', state);
-    // TODO: Generate navbar HTML based on state.isLoggedIn and state.currentUser
+
+    // Generate the HTML string for the navbar content
     let navHTML = '';
     if (state.isLoggedIn) {
+        // HTML for logged-in users
         navHTML = `
-             <a href="#home" data-route="home" class="...">Home</a>
-             <span class="...">Welcome, ${state.currentUser?.username || 'User'}!</span>
-             <button id="logout-button" class="...">Logout</button>
+             <a href="#home" data-route="home" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Home</a>
+             <span class="text-gray-300 px-3 py-2 text-sm">Welcome, ${state.currentUser?.username || 'User'}!</span>
+             <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Logout</button>
          `;
     } else {
+        // HTML for logged-out users
         navHTML = `
-             <a href="#login" data-route="login" class="...">Login</a>
-             <a href="#register" data-route="register" class="...">Register</a>
+             <a href="#login" data-route="login" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Login</a>
+             <a href="#register" data-route="register" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Register</a>
          `;
     }
-    // Replace entire nav content (simple approach)
-    // Note: This will detach existing event listeners on nav items if not using delegation on header/body
+
+    // Replace the content of the nav element with the new HTML
+    // Note: This approach replaces everything inside <nav>. If you have static elements
+    // within the nav container that shouldn't be replaced, you might need a more specific
+    // target element or more granular DOM manipulation.
     navElement.innerHTML = navHTML;
+
+    // TODO: Add actual Tailwind classes to the links/buttons above instead of just "..." where applicable.
+    // I've added back the classes from the original index.ejs for now.
 }
 
 /**
