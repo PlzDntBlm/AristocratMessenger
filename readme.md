@@ -4,54 +4,56 @@
 
 Aristocrat Messenger is a planned web application to simulate sending and receiving messages with a medieval theme, allowing users to interact through letters, maps, and potentially chat rooms. The project aims to create an immersive Single Page Application (SPA) experience.
 
-The primary requirements and user flows are defined in the `Aristocrat Messenger User Map.pdf`  and `Aristocrat Messenger User Flow.pdf` documents.
+The primary requirements and user flows are defined in the `Aristocrat Messenger User Map.pdf` document.
 
 ## Target Tech Stack
 
 * **Backend:** Node.js, Express.js
-* **Templating:** EJS (Embedded JavaScript Templating)
-* **Frontend:** Vanilla JavaScript
+* **Frontend:** Vanilla JavaScript (Custom Component-Based Architecture, History API for routing)
 * **Styling:** TailwindCSS
 * **Database:** MySQL
-* **ORM:** Sequelize (or Prisma) - To be used for database interaction and modeling.
-* **Authentication:** `express-session` for session management, `bcrypt` for password hashing. (JWT is noted as a potential alternative in the User Map ).
+* **ORM:** Sequelize
+* **Authentication:** `express-session` for session management, `bcrypt` for password hashing.
 
-**Planned Initial Dependencies:**
+**Current Dependencies:**
 
-* `express` 
-* `ejs` 
+* `express`
 * `express-session`
 * `bcrypt`
 * `dotenv`
 * `mysql2` (MySQL driver)
-* `sequelize` (or `prisma`)
-* `sequelize-cli` (if using Sequelize)
+* `sequelize`
+* `sequelize-cli`
+* `ejs` (Only for the main `index.ejs` shell)
 
-**Planned Initial Dev Dependencies:**
+**Current Dev Dependencies:**
 
-* `tailwindcss` 
-* `@tailwindcss/cli` 
+* `tailwindcss`
+* `@tailwindcss/cli`
 * `nodemon` (Recommended for development)
 
-## Target Architecture
+## Target Architecture (Current SPA Implementation)
 
-The application will be built as a Single Page Application (SPA) using dynamic content loading:
+The application is built as a Single Page Application (SPA) using client-side rendering and routing:
 
 * **Server (Express):**
-    * Serves a main HTML shell (`views/index.ejs`).
-    * Provides API endpoints to fetch EJS partials (`views/partials/`) and handle data operations.
-    * Interacts with the MySQL database via an ORM (Sequelize) for data persistence (Users, Messages, etc.).
-    * Handles authentication (`/auth/*` routes) and other API logic.
-    * Organizes routes using `express.Router` (e.g., in a `/routes` directory).
-    * Uses middleware for sessions, global data (`res.locals`), and auth checks.
-    * Serves static assets (CSS, client-side JS) from a `/public` directory.
+    * Serves a minimal main HTML shell (`views/index.ejs`).
+    * Provides a JSON API for data operations and authentication (`/api/*`, `/auth/*` routes).
+    * Interacts with the MySQL database via Sequelize for data persistence (Users, Messages, etc.).
+    * Handles authentication using `express-session` and `bcrypt`.
+    * Organizes routes using `express.Router` (`/routes` directory).
+    * Uses middleware for sessions and serves the SPA shell for client-side routes (catch-all middleware).
+    * Serves static assets (CSS, client-side JS) from the `/public` directory.
 * **Client (Vanilla JS):**
-    * The main script in `index.ejs` handles client-side routing using the History API (`pushState`, `popstate`).
-    * Navigation triggers fetching of relevant EJS partial HTML via `fetch`.
-    * Fetched HTML is injected into a content container (e.g., `#content`) in `index.ejs`.
-    * JavaScript behavior specific to partials will be managed (likely via separate JS files in `/public/js/partials/` loaded dynamically, potentially using an `init`/`destroy` pattern) to keep `index.ejs` focused on routing and core state.
+    * Main script (`public/js/app.js`) acts as the entry point.
+    * Handles client-side routing using the History API (`pushState`, `popstate`).
+    * Navigation triggers rendering of appropriate JavaScript components (`public/js/components/*`).
+    * Components generate and return DOM elements, manually appended to the content container (`#content`) via helper functions (`public/js/ui.js`).
+    * Manages shared application state (`public/js/state.js`).
+    * Uses a Publish/Subscribe system (`public/js/pubsub.js`) for reactivity, decoupling state changes from UI updates (e.g., Navbar).
+    * Interacts with the backend JSON API using `fetch` via helper functions (`public/js/api.js`).
 
-## Planned Features (Derived from User Map )
+## Planned Features (Derived from User Map)
 
 ### User Authentication & Core
 
@@ -63,9 +65,9 @@ The application will be built as a Single Page Application (SPA) using dynamic c
     * Features: Registration form (username, email, password); On success redirect to login.
 * **Logout:**
     * User Story: As an authenticated user I want to log out, so that I can end my session.
-    * Features: Clears JWT or removes session.
+    * Features: Clears session.
 * **Password Hashing:** Use `bcrypt`.
-* **Session Management:** Use `express-session` or JWT.
+* **Session Management:** Use `express-session`.
 
 ### Main Application Features
 
@@ -120,50 +122,57 @@ The application will be built as a Single Page Application (SPA) using dynamic c
 
 ### Global/Technical Goals
 
-* **Secure Authentication:** JWT or Session verified on every request.
+* **Secure Authentication:** Session verified on API requests requiring authentication.
 * **Responsive Design:** User interface functional and usable on desktop and mobile devices.
 
-## Proposed Project Structure
+## Current Project Structure
 
 ```
 /
 ├── app.js              # Main Express server setup
-├── package.json
-├── tailwind.config.js
+├── package.json        # Project dependencies and scripts
+├── tailwind.config.js  # Tailwind CSS configuration
 ├── .env                # Environment variables (Secrets, DB Config)
 ├── .gitignore
-├── .sequelizerc        # (If using Sequelize) ORM config
-├── config/             # (If using Sequelize) DB connection config
-│   └── config.json
-├── migrations/         # (If using Sequelize) Database migration files
-├── seeders/            # (If using Sequelize) Database seed files
-├── models/             # Database models (Sequelize or Prisma schema)
-│   └── index.js        # (If using Sequelize) Model loader
-│   └── user.js
-│   └── ...
-├── sequelize/             # (If using squelize) Schema and client setup
+├── .sequelizerc        # Sequelize ORM config file location
+├── config/             # Sequelize DB connection config
+│   └── config.js       # Using JS format for env vars
+├── migrations/         # Sequelize database migration files
+├── seeders/            # Sequelize database seed files (if any)
+├── models/             # Database models (Sequelize)
+│   └── index.js        # Sequelize model loader
+│   └── user.js         # User model definition
+│   └── ...             # Other models (e.g., messages - TODO)
 ├── src/
 │   └── input.css       # Tailwind input source
-├── public/             # Static assets
+├── public/             # Static assets served by Express
 │   ├── css/
 │   │   └── output.css  # Generated Tailwind CSS
-│   └── js/
-│       └── partials/   # For partial-specific JS (planned)
+│   └── js/             # Client-side JavaScript modules
+│       ├── app.js      # Main client application logic, routing, event handling
+│       ├── api.js      # Client-side fetch calls to backend API
+│       ├── state.js    # Client-side state management
+│       ├── ui.js       # Generic UI rendering functions (renderContent, etc.)
+│       ├── pubsub.js   # Publish/Subscribe system for reactivity
+│       └── components/ # Reusable UI component functions
+│           ├── Navbar.js
+│           ├── LoginPage.js
+│           ├── RegisterPage.js
+│           └── HomePage.js
+│           └── ...     # Future components (e.g., MessageList.js)
 ├── views/
-│   ├── index.ejs       # Main SPA layout/shell
-│   └── partials/       # EJS partial views (home, login, etc.)
+│   └── index.ejs       # Main SPA layout/shell (served for SPA routes)
 ├── routes/             # Express routers
-│   └── auth.js         # Router for auth endpoints (planned)
-└── middleware/         # Express middleware (planned)
-├── authMiddleware.js
-└── localsMiddleware.js
+│   ├── api.js          # Router for general JSON API endpoints
+│   └── auth.js         # Router for authentication API endpoints
+└── middleware/         # Express middleware
+└── authMiddleware.js # Middleware to protect routes
 ```
-*(Structure includes directories commonly used with ORMs like Sequelize)*
 
-## Setup Instructions (Initial)
+## Setup Instructions
 
 1.  **Clone:** `git clone <repository-url>`
-2.  **Install Dependencies:** `npm install` (ensure planned dependencies like `sequelize`, `mysql2`, `dotenv`, `bcrypt`, `express-session` are added to `package.json` first).
+2.  **Install Dependencies:** `npm install`.
 3.  **Database Setup:**
     * Ensure you have a MySQL server running locally or accessible.
     * Create a dedicated database for this project (e.g., `aristocrat_messenger_db`).
@@ -177,20 +186,21 @@ The application will be built as a Single Page Application (SPA) using dynamic c
         DB_USER=your_db_user
         DB_PASSWORD=your_db_password
         DB_NAME=aristocrat_messenger_db
-        NODE_ENV=development
+        NODE_ENV=development # Or 'production'
         ```
-    * Use `dotenv` package (`npm install dotenv`) to load these in `app.js` and ORM config files.
-5.  **ORM Setup:**
-    * **(If Sequelize):** Initialize Sequelize (`npx sequelize-cli init`), update `config/config.json` to use environment variables. Create models (e.g., `npx sequelize-cli model:generate --name User --attributes ...`). Run migrations (`npx sequelize-cli db:migrate`).
-6.  **Tailwind CSS:** Run `npx tailwindcss -i ./src/input.css -o ./public/css/output.css --watch` during development. (Consider adding this as an npm script).
+    * Ensure `dotenv` is loaded early in `app.js` and Sequelize `config/config.js`.
+5.  **ORM Setup (Sequelize):**
+    * Update `config/config.js` to use environment variables.
+    * Create models if needed (e.g., `npx sequelize-cli model:generate --name Message --attributes ...`).
+    * Run migrations to create/update database tables: `npx sequelize-cli db:migrate`.
 
-## Running the Application (Initial)
+## Running the Application
 
-1.  **Build CSS:** Ensure `output.css` is generated.
-2.  **Run Migrations:** Ensure the database schema is up to date (e.g., `npx sequelize-cli db:migrate` or `npx prisma migrate deploy`).
-3.  **Start Server:** `node app.js` (or `npm start` / `npm run dev` if scripts are added).
+1.  **Build CSS:** Ensure `public/css/output.css` is generated/up-to-date (`npm run build:css` or keep `npm run watch:css` running).
+2.  **Run Migrations:** Ensure the database schema is up to date (`npx sequelize-cli db:migrate`).
+3.  **Start Server:** `npm run dev` (uses nodemon) or `node app.js`.
 4.  **Access:** `http://localhost:3000` (or configured port).
 
 ## Development Process
 
-This project will be built iteratively, starting with the basic server and SPA structure, integrating the ORM and database, followed by authentication, and then implementing core features based on the User Map. Development will be guided by an AI assistant (Gemini).
+This project is being built iteratively, following the roadmap outlined initially and refined during development. The focus shifted from server-rendered EJS partials to a client-side rendered Single Page Application using Vanilla JavaScript components, the History API, and a central state management approach enhanced by a Pub/Sub system. Development continues to be guided by an AI assistant (Gemini).
