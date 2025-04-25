@@ -1,70 +1,66 @@
 /**
  * public/js/ui.js
- * Handles generic UI updates like rendering main content and the navbar.
+ * Handles generic UI updates like rendering the navbar and main content area.
  */
 import { getState } from './state.js'; // Needed for renderNavbar
 
 const contentElement = document.getElementById('content');
-const navContainer = document.querySelector('header > div'); // Target the container holding the nav
+// Target the header element to find the nav container within it more reliably
+const headerElement = document.querySelector('header');
 
 if (!contentElement) console.error("FATAL ERROR: #content element not found!");
-if (!navContainer) console.warn("Warning: Header container element not found for Navbar!");
+if (!headerElement) console.warn("Warning: Header element not found!");
 
 /**
- * Renders the navigation bar based on the application state.
- * @param {object} state - The current application state from state.js
+ * Renders the navigation bar component into the header.
+ * Assumes NavbarComponent returns a <nav> element.
  */
-function renderNavbar() { // No longer needs state passed in, gets it itself
-    if (!navContainer) return;
-    const state = getState(); // Get current state
-    console.log('UI: Rendering Navbar for state:', state);
+function renderNavbar() {
+    if (!headerElement) return;
+    // Find the existing nav element within the header to replace it
+    const existingNav = headerElement.querySelector('nav');
 
-    // Find or create the nav element within the container
-    let navElement = navContainer.querySelector('nav');
-    if (!navElement) {
-        navElement = document.createElement('nav');
-        // Find where to insert it - maybe after the h1? Adjust selector as needed.
-        const heading = navContainer.querySelector('h1');
-        if (heading) {
-            heading.insertAdjacentElement('afterend', navElement);
+    // Import and call the NavbarComponent function *inside* here
+    // This avoids needing to pass state down explicitly if NavbarComponent uses getState()
+    import('./components/Navbar.js').then(({ NavbarComponent }) => {
+        const newNavElement = NavbarComponent(); // Get the new <nav> element
+        if (existingNav) {
+            existingNav.replaceWith(newNavElement); // Replace the old nav
+            console.log('UI: Navbar updated.');
         } else {
-            navContainer.appendChild(navElement); // Fallback
+            // Fallback: Append if no existing nav found (e.g., first load)
+            // Adjust this logic based on your header structure if needed
+            const h1 = headerElement.querySelector('h1');
+            if(h1) {
+                h1.insertAdjacentElement('afterend', newNavElement);
+            } else {
+                headerElement.appendChild(newNavElement); // Simple append as last resort
+            }
+            console.log('UI: Navbar rendered.');
         }
-    }
-
-
-    let navHTML = '';
-    if (state.isLoggedIn) {
-        navHTML = `
-             <a href="#home" data-route="home" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Home</a>
-             <span class="text-gray-300 px-3 py-2 text-sm">Welcome, ${state.currentUser?.username || 'User'}!</span>
-             <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Logout</button>
-         `;
-    } else {
-        navHTML = `
-             <a href="#login" data-route="login" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Login</a>
-             <a href="#register" data-route="register" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Register</a>
-         `;
-    }
-    navElement.innerHTML = navHTML;
-    // Note: Event listeners for logout/nav links are handled by delegation in app.js
+    }).catch(error => console.error("Failed to load or render NavbarComponent:", error));
 }
 
+
 /**
- * Renders the main content area by appending a component's root element.
+ * Clears and renders the main content area by appending a component's root element.
  * @param {HTMLElement} componentElement - The root HTMLElement returned by a component function.
  */
 function renderContent(componentElement) {
-    if (!contentElement) return;
-    console.log('UI: Rendering main content component...');
+    if (!contentElement) {
+        console.error("Cannot render content, #content element not found.");
+        return;
+    }
+    console.log('UI: Rendering main content with component:', componentElement?.id || 'Component');
     if (componentElement instanceof HTMLElement) {
         contentElement.innerHTML = ''; // Clear previous content
-        contentElement.appendChild(componentElement);
+        contentElement.appendChild(componentElement); // Append the new component element
     } else {
         console.error('Invalid content type for renderContent, expected HTMLElement:', componentElement);
-        contentElement.innerHTML = '<p class="text-red-500">Error rendering content.</p>';
+        contentElement.innerHTML = '<p class="text-red-500">Error: Could not render content.</p>';
     }
+    // TODO: Handle component-specific initialization or focus management if needed after render
 }
 
-// Export only the generic functions now
+// Export the generic functions
 export { renderNavbar, renderContent };

@@ -1,10 +1,18 @@
 /**
- * Renders the Login Page component.
- * @returns {HTMLElement} - The div element containing the login form.
+ * public/js/components/LoginPage.js
+ * Defines the LoginPage component function.
+ */
+
+/**
+ * Creates and returns the Login Page DOM element structure.
+ * @returns {HTMLElement} The root div element for the login page.
  */
 export function LoginPageComponent() {
+    // Create the main container div
     const container = document.createElement('div');
-    container.id = 'partial-login'; // Keep ID for potential styling/selection
+    container.id = 'component-login'; // Optional ID for styling/selection
+
+    // Set the inner HTML structure for the login page
     container.innerHTML = `
         <h2 class="text-xl font-semibold mb-4">Login</h2>
         <form id="login-form" method="POST" action="/auth/login">
@@ -20,7 +28,7 @@ export function LoginPageComponent() {
                 <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
                     Sign In
                 </button>
-                <a href="#register" data-route="register" class="inline-block align-baseline font-bold text-sm text-green-500 hover:text-green-800">
+                <a href="/register" data-route="register" class="inline-block align-baseline font-bold text-sm text-green-500 hover:text-green-800">
                     Need an account? Register
                 </a>
             </div>
@@ -28,14 +36,12 @@ export function LoginPageComponent() {
         </form>
     `;
 
-    // --- Component-Specific Event Handling (Example - Submit) ---
-    // The actual form submission logic (calling api.js, updating state)
-    // is currently handled by handleAuthFormSubmit in app.js via delegation.
-    // We could move that logic here, but it requires passing down handlers or
-    // having components directly interact with api.js/state.js.
-    // Let's keep delegation for submit for now for simplicity.
+    // Note: The 'submit' event for the form (#login-form) is currently handled
+    // by delegation in app.js (handleAuthFormSubmit). If needed later,
+    // component-specific submit logic could be added here.
+    // Example:
     // const form = container.querySelector('#login-form');
-    // form.addEventListener('submit', (event) => { /* component-specific submit handling */ });
+    // form.addEventListener('submit', (e) => { /* component-specific handler */ });
 
-    return container;
+    return container; // Return the constructed element
 }
