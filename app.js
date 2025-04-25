@@ -54,7 +54,6 @@ app.use(express.urlencoded({ extended: true }));
 // Mount the specific routers BEFORE the catch-all middleware
 app.use('/api', apiRouter);
 app.use('/auth', authRouter);
-app.use('/partials', partialsRouter); // Keep if still using server-rendered partials anywhere
 
 /**
  * GET /
