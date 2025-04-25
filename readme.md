@@ -4,7 +4,7 @@
 
 Aristocrat Messenger is a planned web application to simulate sending and receiving messages with a medieval theme, allowing users to interact through letters, maps, and potentially chat rooms. The project aims to create an immersive Single Page Application (SPA) experience.
 
-The primary requirements and user flows are defined in the `Aristocrat Messenger User Map.pdf` document.
+The primary requirements and user flows are defined in the [`Aristocrat Messenger User Map.pdf`]([URL](https://github.com/PlzDntBlm/AristocratMessenger/wiki/User-Map)) document.
 
 ## Target Tech Stack
 
