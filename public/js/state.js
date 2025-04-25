@@ -2,6 +2,7 @@
  * public/js/state.js
  * Manages the client-side application state.
  */
+import { publish } from './pubsub.js'; // Import the publish function
 
 // Initial state (will be updated on load)
 const appState = {
@@ -11,15 +12,26 @@ const appState = {
 };
 
 /**
- * Updates the authentication state.
+ * Updates the authentication state and publishes an event.
  * @param {boolean} loggedInStatus
  * @param {object|null} userData - User object { id, username } or null
  */
 function setAuthState(loggedInStatus, userData = null) {
+    const changed = appState.isLoggedIn !== loggedInStatus || JSON.stringify(appState.currentUser) !== JSON.stringify(userData);
+
     appState.isLoggedIn = loggedInStatus;
     appState.currentUser = userData;
     console.log('State updated:', appState); // Log state changes
-    // TODO: Implement observer pattern or trigger UI updates explicitly from here or calling function
+
+    // Publish an event only if the state actually changed
+    if (changed) {
+        publish('authStateChanged', {
+            isLoggedIn: appState.isLoggedIn,
+            currentUser: appState.currentUser
+        });
+    } else {
+        console.log('State: setAuthState called but state did not change.');
+    }
 }
 
 /**

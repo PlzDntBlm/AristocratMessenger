@@ -1,11 +1,12 @@
 /**
  * public/js/ui.js
  * Handles generic UI updates like rendering the navbar and main content area.
+ * Uses PubSub to react to state changes for Navbar updates.
  */
-import { getState } from './state.js'; // Needed for renderNavbar
+import { subscribe } from './pubsub.js'; // Import subscribe
+// We no longer need getState here directly, NavbarComponent will use it.
 
 const contentElement = document.getElementById('content');
-// Target the header element to find the nav container within it more reliably
 const headerElement = document.querySelector('header');
 
 if (!contentElement) console.error("FATAL ERROR: #content element not found!");
@@ -13,34 +14,42 @@ if (!headerElement) console.warn("Warning: Header element not found!");
 
 /**
  * Renders the navigation bar component into the header.
- * Assumes NavbarComponent returns a <nav> element.
+ * This function is now primarily responsible for the *act* of rendering,
+ * triggered by the 'authStateChanged' event.
+ * It dynamically imports the NavbarComponent to ensure the latest version is used.
  */
 function renderNavbar() {
     if (!headerElement) return;
+
+    console.log("UI: Received trigger to render Navbar...");
+
     // Find the existing nav element within the header to replace it
     const existingNav = headerElement.querySelector('nav');
 
-    // Import and call the NavbarComponent function *inside* here
-    // This avoids needing to pass state down explicitly if NavbarComponent uses getState()
+    // Dynamically import and call the NavbarComponent function
     import('./components/Navbar.js').then(({ NavbarComponent }) => {
-        const newNavElement = NavbarComponent(); // Get the new <nav> element
+        const newNavElement = NavbarComponent(); // Get the new <nav> element from the component
+
+        if (!newNavElement) {
+            console.error("NavbarComponent did not return a valid element.");
+            return;
+        }
+
         if (existingNav) {
             existingNav.replaceWith(newNavElement); // Replace the old nav
-            console.log('UI: Navbar updated.');
+            console.log('UI: Navbar updated via PubSub.');
         } else {
-            // Fallback: Append if no existing nav found (e.g., first load)
-            // Adjust this logic based on your header structure if needed
+            // Fallback: Append if no existing nav found (initial load or error recovery)
+            console.log('UI: No existing navbar found, appending new one.');
             const h1 = headerElement.querySelector('h1');
             if(h1) {
                 h1.insertAdjacentElement('afterend', newNavElement);
             } else {
                 headerElement.appendChild(newNavElement); // Simple append as last resort
             }
-            console.log('UI: Navbar rendered.');
         }
     }).catch(error => console.error("Failed to load or render NavbarComponent:", error));
 }
-
 
 /**
  * Clears and renders the main content area by appending a component's root element.
@@ -62,5 +71,14 @@ function renderContent(componentElement) {
     // TODO: Handle component-specific initialization or focus management if needed after render
 }
 
-// Export the generic functions
+
+// --- PubSub Subscription ---
+// Subscribe the renderNavbar function to the authStateChanged event.
+// This happens once when the ui.js module is loaded.
+// Now, whenever 'authStateChanged' is published (e.g., from state.js), renderNavbar will run.
+subscribe('authStateChanged', renderNavbar);
+console.log("UI: Subscribed renderNavbar to 'authStateChanged' event.");
+
+
+// Export the generic functions (renderNavbar is exported but primarily triggered via PubSub)
 export { renderNavbar, renderContent };
