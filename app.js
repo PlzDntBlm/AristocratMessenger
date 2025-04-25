@@ -13,79 +13,99 @@ const session = require('express-session'); // Require session
 // Import Routers
 const partialsRouter = require('./routes/partials');
 const authRouter = require('./routes/auth');
-const apiRouter = require('./routes/api'); // Require the new API router
+const apiRouter = require('./routes/api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // --- Session Configuration ---
-// IMPORTANT: Session middleware should come BEFORE routers that use sessions
 app.use(session({
-    secret: process.env.SESSION_SECRET, // Use the secret from your .env file
-    resave: false,                      // Don't save session if unmodified
-    saveUninitialized: false,           // Don't create session until something stored
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
     cookie: {
-        // secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (requires HTTPS)
-        secure: false, // Set to true if your development environment uses HTTPS
-        httpOnly: true, // Prevents client-side JS from reading the cookie
-        maxAge: 1000 * 60 * 60 * 24 // Cookie expiration time (e.g., 24 hours in milliseconds)
-        // TODO: Consider using a session store like connect-session-sequelize for production
+        secure: false, // Set to true if using HTTPS
+        httpOnly: true,
+        maxAge: 1000 * 60 * 60 * 24 // 24 hours
+        // TODO: Consider using a session store
     }
 }));
 
 // --- Make Session Data Available to Templates ---
-// This middleware runs for every request BEFORE the routers
 app.use((req, res, next) => {
-    res.locals.isLoggedIn = !!req.session.userId; // Boolean: true if userId exists in session
-    res.locals.username = req.session.username || null; // Username or null
-    // You can add other session data to res.locals if needed
-    next(); // Continue to the next middleware/router
+    res.locals.isLoggedIn = !!req.session.userId;
+    res.locals.username = req.session.username || null;
+    next();
 });
 
 // --- Other Core Middleware ---
-// Set EJS as the view engine
 app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views')); // Tell Express where to find view files
+app.set('views', path.join(__dirname, 'views'));
 
 // Serve static files (CSS, client-side JS) from the 'public' directory
+// IMPORTANT: Placed BEFORE any specific or catch-all routes.
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Body Parsers (Place AFTER static, BEFORE routes)
-app.use(express.json()); // Parses incoming JSON request bodies
-app.use(express.urlencoded({ extended: true })); // Parses URL-encoded form data
+// Body Parsers
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 
-// --- Routes ---
-// Mount the routers (Place AFTER core middleware)
-app.use('/api', apiRouter); // Mount the API router under /api
-app.use('/partials', partialsRouter); // Keep this for now? Or remove if fully client-side? (Let's keep for now)
+// --- Specific Routes ---
+// Mount the specific routers BEFORE the catch-all middleware
+app.use('/api', apiRouter);
 app.use('/auth', authRouter);
+app.use('/partials', partialsRouter); // Keep if still using server-rendered partials anywhere
 
 /**
  * GET /
- * Route to serve the main Single Page Application (SPA) shell.
- * This should be defined only once.
+ * Specific handler for the root path.
  */
 app.get('/', (req, res) => {
-    // res.locals are automatically available in templates rendered via res.render
-    res.render('index', {
-        // You can pass additional page-specific variables here if needed
-        // pageTitle: 'Aristocrat Messenger' // Example
-    });
+    console.log("Serving index.ejs for GET /");
+    res.render('index');
 });
 
-// --- Error Handling --- (Place AFTER all routes)
+// --- SPA Catch-All Middleware ---
+/**
+ * Middleware to serve the main index.ejs file for SPA routes.
+ * This should be placed AFTER static file middleware and specific routes.
+ */
+const serveSpaHtml = (req, res, next) => {
+    // Check if the request is a GET request, accepts HTML, and doesn't look like an API/Asset path.
+    if (
+        req.method === 'GET' &&
+        req.accepts('html') &&                      // Check if the client accepts HTML
+        !req.path.startsWith('/api/') &&            // Exclude specific API prefix
+        !req.path.startsWith('/auth/') &&           // Exclude specific Auth prefix (though most are POST)
+        !req.path.startsWith('/partials/') &&       // Exclude partials prefix
+        !req.path.match(/\.\w+$/)                   // Exclude paths that look like file extensions
+    ) {
+        console.log(`SPA Middleware: Serving index.ejs for GET ${req.path}`);
+        res.render('index'); // Serve the main SPA file
+    } else {
+        // If it's not a GET, doesn't accept HTML, or looks like an excluded path,
+        // pass it to the next middleware (likely the 404 handler).
+        console.log(`SPA Middleware: Passing request ${req.method} ${req.path} to next handler.`);
+        next();
+    }
+};
+
+// Use the SPA catch-all middleware
+app.use(serveSpaHtml);
+
+
+// --- Error Handling --- (Place AFTER all routes and middleware)
 // Basic 404 Not Found handler
 app.use((req, res, next) => {
+    console.log(`404 Handler: Route not found for ${req.method} ${req.originalUrl}`);
     res.status(404).send("Sorry, that route doesn't exist.");
-    // TODO: Consider rendering a 404 EJS template
 });
 
-// General error handling middleware (must have 4 arguments)
+// General error handling middleware
 app.use((err, req, res, next) => {
     console.error("Unhandled Error:", err.stack || err);
     res.status(500).send('Something broke on the server!');
-    // TODO: Consider rendering a 500 EJS template, especially for production
 });
 
 // --- Server Activation ---
