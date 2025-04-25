@@ -11,7 +11,6 @@ const path = require('path');
 const session = require('express-session'); // Require session
 
 // Import Routers
-const partialsRouter = require('./routes/partials');
 const authRouter = require('./routes/auth');
 const apiRouter = require('./routes/api');
 

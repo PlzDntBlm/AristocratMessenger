@@ -153,7 +153,6 @@ The application will be built as a Single Page Application (SPA) using dynamic c
 │   ├── index.ejs       # Main SPA layout/shell
 │   └── partials/       # EJS partial views (home, login, etc.)
 ├── routes/             # Express routers
-│   └── partials.js     # Router for serving partials (planned)
 │   └── auth.js         # Router for auth endpoints (planned)
 └── middleware/         # Express middleware (planned)
 ├── authMiddleware.js
