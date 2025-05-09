@@ -11,12 +11,30 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      User.hasMany(models.Message, {
+        foreignKey: 'senderId',
+        as: 'sentMessages', // Alias for messages sent by the user
+      });
+      User.hasMany(models.Message, {
+        foreignKey: 'recipientId',
+        as: 'receivedMessages', // Alias for messages received by the user
+      });
     }
   }
   User.init({
-    username: DataTypes.STRING,
-    email: DataTypes.STRING,
-    password: DataTypes.STRING
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false, // Assuming username is required
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false, // Assuming email is required
+      unique: true,     // Assuming email should be unique
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false, // Assuming password is required
+    }
   }, {
     sequelize,
     modelName: 'User',
