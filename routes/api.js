@@ -28,6 +28,28 @@ router.get('/auth/status', (req, res) => {
     }
 });
 
+// --- User API Endpoints ---
+/**
+ * GET /api/users
+ * Fetches a list of users (id and username).
+ * Requires authentication to access the user list for messaging.
+ */
+router.get('/users', isAuthenticated, async (req, res) => {
+    try {
+        const users = await User.findAll({
+            attributes: ['id', 'username'], // Only select necessary attributes
+            order: [['username', 'ASC']]    // Order alphabetically by username
+        });
+        // Optional: Filter out the current logged-in user from the list
+        // const filteredUsers = users.filter(user => user.id !== req.session.userId);
+        // res.json({ success: true, data: filteredUsers });
+        res.json({ success: true, data: users });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch users.' });
+    }
+});
+
 // --- Message API Endpoints ---
 
 /**
