@@ -113,6 +113,15 @@ async function getData(url = '') {
     }
 }
 
+/**
+ * Fetches a list of all users.
+ * @returns {Promise<object>} - Promise resolving to the server's JSON response (e.g., { success: boolean, data: Array<User> })
+ */
+async function getUsers() {
+    console.log('API: Fetching all users...');
+    return await getData('/api/users');
+}
+
 
 // Export functions as they are added
 export {
@@ -121,5 +130,7 @@ export {
     checkAuthStatus,
     loginUser,
     logoutUser,
-    registerUser
+    registerUser,
+    getUsers // Add new function here
+    // TODO: Add sendMessage function later
 };

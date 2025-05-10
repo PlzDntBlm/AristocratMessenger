@@ -2,92 +2,93 @@
  * public/js/app.js
  * Main application entry point. Initializes the app, handles routing,
  * manages interaction between state, api, and component rendering.
- * Uses PubSub for reacting to state changes (e.g., Navbar updates).
  */
 import * as api from './api.js';
-import { getState, setAuthState } from './state.js';
-import { renderContent, renderNavbar } from './ui.js';
+import { getState, setAuthState, setScriptoriumState } from './state.js'; // Import setScriptoriumState
+import { renderContent, renderNavbar } from './ui.js'; // renderNavbar for completeness if needed elsewhere
 import { LoginPageComponent } from './components/LoginPage.js';
 import { RegisterPageComponent } from './components/RegisterPage.js';
 import { HomePageComponent } from './components/HomePage.js';
-import { ScriptoriumComponent } from './components/ScriptoriumComponent.js'; // Import Scriptorium
+import { ScriptoriumComponent } from './components/ScriptoriumComponent.js';
 
 // --- Core Elements ---
-const headerElement = document.querySelector('header');
+// const headerElement = document.querySelector('header'); // Not directly used in this file after Navbar PubSub
 const contentElement = document.getElementById('content');
-const bodyElement = document.body; // For appending overlay
+const bodyElement = document.body;
 
 // --- Scriptorium Management ---
-let scriptoriumElement = null; // Hold a reference to the Scriptorium DOM element
+let scriptoriumElement = null; // To hold the DOM element
 
 function showScriptorium() {
     if (!scriptoriumElement) {
         scriptoriumElement = ScriptoriumComponent();
-        bodyElement.appendChild(scriptoriumElement); // Append to body to ensure it's on top
+        bodyElement.appendChild(scriptoriumElement); // Append once to the body
     }
-    scriptoriumElement.classList.remove('hidden');
-    console.log('App: Showing Scriptorium');
-    // TODO: Focus management (e.g., first input field)
+    // Update central state to open Scriptorium and reset its fields
+    setScriptoriumState({
+        isOpen: true,
+        recipient: null,
+        subject: '',
+        body: ''
+    });
+    // ScriptoriumComponent's subscription to 'scriptoriumStateChanged' will handle class 'hidden'
+    // and call loadContacts if needed.
+    console.log('App: Requested to show Scriptorium (state updated)');
 }
 
 function hideScriptorium() {
-    if (scriptoriumElement) {
-        scriptoriumElement.classList.add('hidden');
-        console.log('App: Hiding Scriptorium');
-        // Optional: Remove from DOM if not needed frequently, or keep for performance
-        // scriptoriumElement.remove();
-        // scriptoriumElement = null;
-    }
+    // Update central state to close Scriptorium
+    setScriptoriumState({ isOpen: false });
+    // ScriptoriumComponent's subscription to 'scriptoriumStateChanged' will handle class 'hidden'
+    console.log('App: Requested to hide Scriptorium (state updated)');
 }
 
 // --- Route Rendering Logic ---
-// ... (renderRoute function remains the same)
 function renderRoute(routeName) {
-    if (!contentElement) return;
+    if (!contentElement) {
+        console.error("FATAL ERROR: #content element not found in renderRoute!");
+        return;
+    }
 
     console.log(`App: Rendering route: ${routeName}`);
     let componentElement = null;
-    const state = getState();
+    const currentAppState = getState(); // Get full state
 
-    if(routeName === '' || routeName === '/') {
-        routeName = state.isLoggedIn ? 'home' : 'login';
+    if (routeName === '' || routeName === '/') {
+        routeName = currentAppState.isLoggedIn ? 'home' : 'login';
         const normalizedPath = '/' + routeName;
         if (window.location.pathname !== normalizedPath) {
-            console.log(`App: Normalizing path to ${normalizedPath}`);
             history.replaceState({ route: routeName }, '', normalizedPath);
         }
     }
 
     switch (routeName) {
         case 'login':
-            if (state.isLoggedIn) {
-                console.log("Redirecting logged-in user from /login to /home");
+            if (currentAppState.isLoggedIn) {
                 history.replaceState({ route: 'home' }, '', '/home');
-                componentElement = HomePageComponent(state.currentUser);
+                componentElement = HomePageComponent(currentAppState.currentUser);
             } else {
                 componentElement = LoginPageComponent();
             }
             break;
         case 'register':
-            if (state.isLoggedIn) {
-                console.log("Redirecting logged-in user from /register to /home");
+            if (currentAppState.isLoggedIn) {
                 history.replaceState({ route: 'home' }, '', '/home');
-                componentElement = HomePageComponent(state.currentUser);
+                componentElement = HomePageComponent(currentAppState.currentUser);
             } else {
                 componentElement = RegisterPageComponent();
             }
             break;
         case 'home':
-            if (!state.isLoggedIn) {
-                console.warn("Redirecting logged-out user from /home to /login.");
+            if (!currentAppState.isLoggedIn) {
                 history.replaceState({ route: 'login' }, '', '/login');
                 componentElement = LoginPageComponent();
             } else {
-                componentElement = HomePageComponent(state.currentUser);
+                componentElement = HomePageComponent(currentAppState.currentUser);
             }
             break;
         default:
-            console.warn(`Unknown route: ${routeName}. Rendering 404.`);
+            console.warn(`Unknown route: ${routeName}. Rendering 404 like content.`);
             componentElement = document.createElement('div');
             componentElement.innerHTML = '<h2 class="text-xl font-semibold mb-4">404 - Page Not Found</h2><p>Sorry, the page you requested does not exist.</p>';
     }
@@ -100,21 +101,44 @@ function renderRoute(routeName) {
 
 // --- Event Handlers ---
 function handleGlobalClick(event) {
-    const targetLink = event.target.closest('a[data-route]');
-    const logoutButton = event.target.closest('#logout-button');
-    const showScriptoriumButton = event.target.closest('#show-scriptorium-button');
-    const closeScriptoriumButton = event.target.closest('[data-action="close-scriptorium"]'); // Target close button
+    const target = event.target;
+
+    // Scriptorium specific actions (handled first as they are in an overlay)
+    if (scriptoriumElement && getState('scriptorium')?.isOpen) { // Check if scriptorium is logically open
+        if (target.closest('[data-action="close-scriptorium"]')) {
+            event.preventDefault();
+            hideScriptorium();
+            return;
+        }
+        if (target.closest('[data-action="select-recipient"]')) {
+            event.preventDefault();
+            const selectRecipientButton = target.closest('[data-action="select-recipient"]');
+            const userId = parseInt(selectRecipientButton.dataset.userId, 10);
+            const username = selectRecipientButton.textContent;
+            setScriptoriumState({ recipient: { id: userId, username: username } });
+            console.log(`App: Selected recipient set in state: ${username} (ID: ${userId})`);
+            return;
+        }
+        // TODO: Handle 'send-message' action in the next iteration (31.4)
+        if (target.closest('[data-action="send-message"]')) {
+            event.preventDefault();
+            console.log('App: Send message button clicked - logic TODO');
+            // Call a function like handleSendMessage()
+            return;
+        }
+    }
+
+    // General navigation and auth actions
+    const targetLink = target.closest('a[data-route]');
+    const logoutButton = target.closest('#logout-button');
+    const showScriptoriumButton = target.closest('#show-scriptorium-button');
 
     if (targetLink) {
         event.preventDefault();
         const route = targetLink.getAttribute('data-route');
         const path = targetLink.getAttribute('href');
-
         if (path !== window.location.pathname) {
-            console.log(`App: Navigating to route: ${route}, path: ${path}`);
             history.pushState({ route: route }, '', path);
-        } else {
-            console.log(`App: Already on route ${route}. (Re-rendering anyway)`);
         }
         renderRoute(route);
     } else if (logoutButton) {
@@ -123,22 +147,16 @@ function handleGlobalClick(event) {
     } else if (showScriptoriumButton) {
         event.preventDefault();
         showScriptorium();
-    } else if (closeScriptoriumButton && scriptoriumElement && !scriptoriumElement.classList.contains('hidden')) {
-        // Ensure scriptoriumElement exists and is visible before trying to hide
-        event.preventDefault();
-        hideScriptorium();
     }
-    // TODO: Add delegation for Scriptorium form submit button later
 }
 
-// ... (handleLogout, handleAuthFormSubmit, handlePopstate remain the same)
 async function handleLogout() {
     console.log("App: Logout initiated...");
     try {
         const result = await api.logoutUser();
-        console.log('Logout API result:', result);
         if (result.success) {
-            setAuthState(false, null);
+            setAuthState(false, null); // This will trigger Navbar update via PubSub
+            setScriptoriumState({ isOpen: false, recipient: null, subject: '', body: '' }); // Also close Scriptorium on logout
             const route = 'login';
             const path = '/login';
             history.pushState({ route: route }, '', path);
@@ -148,7 +166,7 @@ async function handleLogout() {
         }
     } catch (error) {
         console.error("App: Logout failed:", error);
-        alert(`Logout failed: ${error.message}`);
+        alert(`Logout failed: ${error.message}`); // Simple feedback for now
     }
 }
 
@@ -169,22 +187,18 @@ async function handleAuthFormSubmit(event) {
         let nextPath = null;
 
         if (form.id === 'login-form') {
-            console.log('App: Submitting login via API:', data);
             result = await api.loginUser(data.email, data.password);
             if (result.success) {
-                setAuthState(true, result.user);
+                setAuthState(true, result.user); // Triggers Navbar update
                 nextRoute = 'home';
                 nextPath = '/home';
             } else { throw new Error(result.message || 'Login failed'); }
-
         } else if (form.id === 'register-form') {
-            console.log('App: Submitting registration via API:', data);
             result = await api.registerUser(data.username, data.email, data.password);
             if (result.success) {
-                console.log('Registration successful');
                 nextRoute = 'login';
                 nextPath = '/login';
-                alert("Registration successful! Please log in.");
+                alert("Registration successful! Please log in."); // Simple feedback
             } else { throw new Error(result.message || 'Registration failed'); }
         }
 
@@ -194,7 +208,6 @@ async function handleAuthFormSubmit(event) {
             }
             renderRoute(nextRoute);
         }
-
     } catch (error) {
         console.error(`App: Form ${form.id} submission error:`, error);
         if (messageElement) {
@@ -213,46 +226,46 @@ function handlePopstate(event) {
         route = event.state.route;
     } else {
         const path = window.location.pathname;
-        const currentState = getState();
-        route = path.substring(1) || (currentState.isLoggedIn ? 'home' : 'login');
-        console.log(`Popstate: No state found, determined route from path ${path} -> ${route}`);
-        history.replaceState({ route: route }, '', path);
+        const currentAppState = getState();
+        route = path.substring(1) || (currentAppState.isLoggedIn ? 'home' : 'login');
+        history.replaceState({ route: route }, '', path); // Ensure state is set for direct nav
     }
     renderRoute(route);
+    // Check if Scriptorium should be open based on history state (if we decide to store it)
+    // For now, popstate doesn't directly control Scriptorium visibility
 }
-
 
 // --- Initialization ---
 async function initializeApp() {
     console.log('App: Initializing...');
 
-    // Use a single global event listener on the body for clicks
     bodyElement.addEventListener('click', handleGlobalClick);
 
-    // Form submissions can be delegated from #content if all forms are within it.
-    // If Scriptorium forms are outside #content, need to adjust or add listener to body too.
-    // For now, assuming auth forms are in #content.
     if (contentElement) {
         contentElement.addEventListener('submit', handleAuthFormSubmit);
     } else {
         console.error("FATAL ERROR: #content element not found! Auth forms may not work.");
     }
-    // TODO: Add a delegated submit handler for Scriptorium form once it's built.
 
     window.addEventListener('popstate', handlePopstate);
 
+    // Initial check for auth status
     try {
-        console.log("App: Checking initial auth status via API...");
         const authStatus = await api.checkAuthStatus();
-        console.log("App: Received initial auth status:", authStatus);
         setAuthState(authStatus.isLoggedIn, authStatus.user || null);
     } catch (error) {
         console.error("App: Failed to fetch initial auth status:", error);
-        setAuthState(false, null);
+        setAuthState(false, null); // Assume logged out on error
     }
 
+    // Initial Scriptorium state (closed)
+    // ScriptoriumComponent will also set its initial UI based on this via subscription if already in DOM
+    setScriptoriumState({ isOpen: false, recipient: null, subject: '', body: '' });
+
+
+    // Initial route rendering based on current path (happens *after* auth state is set)
     const initialPath = window.location.pathname;
-    const initialRoute = initialPath.substring(1);
+    const initialRoute = initialPath.substring(1) || (getState('isLoggedIn') ? 'home' : 'login'); // Use updated state
     renderRoute(initialRoute);
 
     console.log("App: Initialization complete.");
