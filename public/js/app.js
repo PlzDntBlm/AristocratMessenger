@@ -6,35 +6,51 @@
  */
 import * as api from './api.js';
 import { getState, setAuthState } from './state.js';
-// Import generic UI updaters from ui.js
-import { renderContent, renderNavbar } from './ui.js'; // renderNavbar is still needed for initial subscription setup? Check ui.js
-// Import component functions
+import { renderContent, renderNavbar } from './ui.js';
 import { LoginPageComponent } from './components/LoginPage.js';
 import { RegisterPageComponent } from './components/RegisterPage.js';
 import { HomePageComponent } from './components/HomePage.js';
-// Import PubSub (optional here, mostly used by state.js and ui.js)
-// import { subscribe } from './pubsub.js';
+import { ScriptoriumComponent } from './components/ScriptoriumComponent.js'; // Import Scriptorium
 
 // --- Core Elements ---
 const headerElement = document.querySelector('header');
 const contentElement = document.getElementById('content');
+const bodyElement = document.body; // For appending overlay
+
+// --- Scriptorium Management ---
+let scriptoriumElement = null; // Hold a reference to the Scriptorium DOM element
+
+function showScriptorium() {
+    if (!scriptoriumElement) {
+        scriptoriumElement = ScriptoriumComponent();
+        bodyElement.appendChild(scriptoriumElement); // Append to body to ensure it's on top
+    }
+    scriptoriumElement.classList.remove('hidden');
+    console.log('App: Showing Scriptorium');
+    // TODO: Focus management (e.g., first input field)
+}
+
+function hideScriptorium() {
+    if (scriptoriumElement) {
+        scriptoriumElement.classList.add('hidden');
+        console.log('App: Hiding Scriptorium');
+        // Optional: Remove from DOM if not needed frequently, or keep for performance
+        // scriptoriumElement.remove();
+        // scriptoriumElement = null;
+    }
+}
 
 // --- Route Rendering Logic ---
-/**
- * Renders the appropriate component into the content area based on the route name.
- * @param {string} routeName - The name of the route (e.g., 'login', 'home').
- */
+// ... (renderRoute function remains the same)
 function renderRoute(routeName) {
-    if (!contentElement) return; // Guard clause
+    if (!contentElement) return;
 
     console.log(`App: Rendering route: ${routeName}`);
     let componentElement = null;
-    const state = getState(); // Get current state for routing decisions
+    const state = getState();
 
-    // Normalize root path or empty route
     if(routeName === '' || routeName === '/') {
         routeName = state.isLoggedIn ? 'home' : 'login';
-        // Update history correctly for the normalized route
         const normalizedPath = '/' + routeName;
         if (window.location.pathname !== normalizedPath) {
             console.log(`App: Normalizing path to ${normalizedPath}`);
@@ -42,7 +58,6 @@ function renderRoute(routeName) {
         }
     }
 
-    // Select and call the appropriate component function
     switch (routeName) {
         case 'login':
             if (state.isLoggedIn) {
@@ -71,31 +86,24 @@ function renderRoute(routeName) {
                 componentElement = HomePageComponent(state.currentUser);
             }
             break;
-        // TODO: Add cases for other routes ('scriptorium', 'cabinet', etc.)
-        // case 'scriptorium': componentElement = ScriptoriumComponent(); break;
         default:
             console.warn(`Unknown route: ${routeName}. Rendering 404.`);
             componentElement = document.createElement('div');
             componentElement.innerHTML = '<h2 class="text-xl font-semibold mb-4">404 - Page Not Found</h2><p>Sorry, the page you requested does not exist.</p>';
-        // Optional: Update history state for the 404?
-        // history.replaceState({ route: '404' }, '', '/' + routeName);
     }
 
-    // Render the component's element into the content area
     if (componentElement) {
         renderContent(componentElement);
     }
 }
 
-// --- Event Handlers ---
 
-/**
- * Handles clicks delegated from header or content area.
- * Primarily deals with navigation links and logout button.
- */
-function handleNavClick(event) {
+// --- Event Handlers ---
+function handleGlobalClick(event) {
     const targetLink = event.target.closest('a[data-route]');
     const logoutButton = event.target.closest('#logout-button');
+    const showScriptoriumButton = event.target.closest('#show-scriptorium-button');
+    const closeScriptoriumButton = event.target.closest('[data-action="close-scriptorium"]'); // Target close button
 
     if (targetLink) {
         event.preventDefault();
@@ -109,28 +117,32 @@ function handleNavClick(event) {
             console.log(`App: Already on route ${route}. (Re-rendering anyway)`);
         }
         renderRoute(route);
-
     } else if (logoutButton) {
         event.preventDefault();
         handleLogout();
+    } else if (showScriptoriumButton) {
+        event.preventDefault();
+        showScriptorium();
+    } else if (closeScriptoriumButton && scriptoriumElement && !scriptoriumElement.classList.contains('hidden')) {
+        // Ensure scriptoriumElement exists and is visible before trying to hide
+        event.preventDefault();
+        hideScriptorium();
     }
+    // TODO: Add delegation for Scriptorium form submit button later
 }
 
-/**
- * Handles the logout process.
- */
+// ... (handleLogout, handleAuthFormSubmit, handlePopstate remain the same)
 async function handleLogout() {
     console.log("App: Logout initiated...");
     try {
         const result = await api.logoutUser();
         console.log('Logout API result:', result);
         if (result.success) {
-            setAuthState(false, null);      // Update state -> PubSub triggers renderNavbar
-            // renderNavbar(); // No longer needed here
+            setAuthState(false, null);
             const route = 'login';
             const path = '/login';
             history.pushState({ route: route }, '', path);
-            renderRoute(route);             // Render login page
+            renderRoute(route);
         } else {
             throw new Error(result.message || 'Logout failed');
         }
@@ -140,9 +152,6 @@ async function handleLogout() {
     }
 }
 
-/**
- * Handles login and register form submissions delegated from the content area.
- */
 async function handleAuthFormSubmit(event) {
     event.preventDefault();
     const form = event.target;
@@ -163,8 +172,7 @@ async function handleAuthFormSubmit(event) {
             console.log('App: Submitting login via API:', data);
             result = await api.loginUser(data.email, data.password);
             if (result.success) {
-                setAuthState(true, result.user); // Update state -> PubSub triggers renderNavbar
-                // renderNavbar(); // No longer needed here
+                setAuthState(true, result.user);
                 nextRoute = 'home';
                 nextPath = '/home';
             } else { throw new Error(result.message || 'Login failed'); }
@@ -198,9 +206,6 @@ async function handleAuthFormSubmit(event) {
     }
 }
 
-/**
- * Handles browser back/forward navigation.
- */
 function handlePopstate(event) {
     console.log('App: Popstate event fired:', event.state);
     let route;
@@ -208,59 +213,49 @@ function handlePopstate(event) {
         route = event.state.route;
     } else {
         const path = window.location.pathname;
-        // Determine route from path, considering potential initial state
-        const currentState = getState(); // Check state AFTER potential auth change
+        const currentState = getState();
         route = path.substring(1) || (currentState.isLoggedIn ? 'home' : 'login');
         console.log(`Popstate: No state found, determined route from path ${path} -> ${route}`);
-        // Ensure history state reflects the determined route if it wasn't set
         history.replaceState({ route: route }, '', path);
     }
-    renderRoute(route); // Render the view for the history state
-    // renderNavbar(); // No longer needed - PubSub handles navbar based on state changes
+    renderRoute(route);
 }
 
+
 // --- Initialization ---
-/**
- * Initializes the entire application.
- */
 async function initializeApp() {
     console.log('App: Initializing...');
 
-    // Setup global event listeners using delegation
-    if (headerElement) {
-        headerElement.addEventListener('click', handleNavClick);
-    } else { console.warn("Header element not found during init!"); }
+    // Use a single global event listener on the body for clicks
+    bodyElement.addEventListener('click', handleGlobalClick);
 
+    // Form submissions can be delegated from #content if all forms are within it.
+    // If Scriptorium forms are outside #content, need to adjust or add listener to body too.
+    // For now, assuming auth forms are in #content.
     if (contentElement) {
-        contentElement.addEventListener('click', handleNavClick);
         contentElement.addEventListener('submit', handleAuthFormSubmit);
-    } else { console.error("FATAL ERROR: #content element not found! Cannot initialize app."); return; }
+    } else {
+        console.error("FATAL ERROR: #content element not found! Auth forms may not work.");
+    }
+    // TODO: Add a delegated submit handler for Scriptorium form once it's built.
 
     window.addEventListener('popstate', handlePopstate);
 
-    // Ensure Navbar subscription is set up (handled by ui.js import)
-    // renderNavbar(); // Remove this initial call - it's handled by the subscription in ui.js
-
-    // Check initial authentication status from server
     try {
         console.log("App: Checking initial auth status via API...");
         const authStatus = await api.checkAuthStatus();
         console.log("App: Received initial auth status:", authStatus);
-        // Setting state will trigger the 'authStateChanged' event,
-        // and the subscribed renderNavbar function in ui.js will run.
         setAuthState(authStatus.isLoggedIn, authStatus.user || null);
     } catch (error) {
         console.error("App: Failed to fetch initial auth status:", error);
-        setAuthState(false, null); // Assume logged out, triggers PubSub
+        setAuthState(false, null);
     }
 
-    // Initial route rendering based on current path (happens *after* auth state is set)
     const initialPath = window.location.pathname;
-    const initialRoute = initialPath.substring(1); // Get route name from path
-    renderRoute(initialRoute); // Render initial view based on path and now-set auth state
+    const initialRoute = initialPath.substring(1);
+    renderRoute(initialRoute);
 
     console.log("App: Initialization complete.");
 }
 
-// Start the app
 document.addEventListener('DOMContentLoaded', initializeApp);
