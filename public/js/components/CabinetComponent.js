@@ -2,8 +2,9 @@
  * public/js/components/CabinetComponent.js
  * Defines the Cabinet (view messages) component, allowing users to see their inbox and outbox.
  */
-import * as api from '../api.js'; // Import the API module
-// import { getState } from '../state.js'; // May be needed for user context or other state
+import * as api from '../api.js';
+// import { getState } from '../state.js'; // Not currently needed
+// import { publish } from '../pubsub.js'; // For future navigation events
 
 /**
  * Creates and returns the root DOM element for the Letter Cabinet page.
@@ -50,21 +51,19 @@ export function CabinetComponent() {
     const inboxMessageListDiv = document.createElement('div');
     inboxMessageListDiv.id = 'inbox-message-list';
     inboxMessageListDiv.className = 'space-y-3';
-    inboxMessageListDiv.innerHTML = '<p class="text-stone-500 dark:text-stone-400">Loading your inbox...</p>';
     inboxSection.appendChild(inboxHeader);
     inboxSection.appendChild(inboxMessageListDiv);
     messagesContentArea.appendChild(inboxSection);
 
     const outboxSection = document.createElement('div');
     outboxSection.id = 'cabinet-outbox-section';
-    outboxSection.className = 'hidden'; // Start hidden
+    outboxSection.className = 'hidden';
     const outboxHeader = document.createElement('h3');
     outboxHeader.className = 'text-xl font-semibold text-stone-700 dark:text-stone-300 mb-4';
     outboxHeader.textContent = 'Sent Letters (Outbox)';
     const outboxMessageListDiv = document.createElement('div');
     outboxMessageListDiv.id = 'outbox-message-list';
     outboxMessageListDiv.className = 'space-y-3';
-    outboxMessageListDiv.innerHTML = '<p class="text-stone-500 dark:text-stone-400">Outbox functionality coming soon...</p>';
     outboxSection.appendChild(outboxHeader);
     outboxSection.appendChild(outboxMessageListDiv);
     messagesContentArea.appendChild(outboxSection);
@@ -73,12 +72,12 @@ export function CabinetComponent() {
 
     let currentTab = 'inbox';
     let inboxLoaded = false;
-    // let outboxLoaded = false; // For future use
+    let outboxLoaded = false; // Flag for outbox
 
     /**
      * Formats a date string or Date object into a more readable format.
-     * @param {string|Date} dateInput - The date to format.
-     * @returns {string} A formatted date string (e.g., "May 11, 2025, 04:30 PM").
+     * @param {string|Date|null} dateInput - The date to format.
+     * @returns {string} A formatted date string (e.g., "May 11, 2025, 04:30 PM") or 'N/A'.
      */
     function formatDate(dateInput) {
         if (!dateInput) return 'N/A';
@@ -88,24 +87,22 @@ export function CabinetComponent() {
                 hour: '2-digit', minute: '2-digit'
             });
         } catch (e) {
+            console.error("Error formatting date:", dateInput, e);
             return 'Invalid Date';
         }
     }
 
     /**
      * Handles the click event on a message item.
-     * For now, logs message details. Later will navigate to detail view.
+     * For now, logs message details. Later will navigate to detail view or trigger an event.
      * @param {object} message - The message object that was clicked.
      */
     function handleMessageItemClick(message) {
-        console.log('Clicked message:', message);
-        // In future:
-        // For example, update state or navigate:
-        // history.pushState({ route: 'messageDetail', messageId: message.id }, '', `/messages/${message.id}`);
-        // renderRoute('messageDetail'); // Assuming renderRoute can handle this
-        alert(`Viewing message ID: ${message.id}\nSubject: ${message.subject}\n(Detail view coming soon!)`);
+        console.log('Cabinet: Clicked message object:', message);
+        alert(`Viewing message ID: ${message.id}\nSubject: "${message.subject}"\n(Full detail view coming soon!)`);
+        // Future:
+        // publish('navigateToMessageDetail', { messageId: message.id });
     }
-
 
     /**
      * Renders a list of messages into the specified container.
@@ -117,48 +114,47 @@ export function CabinetComponent() {
         targetListDiv.innerHTML = '';
 
         if (!messages || messages.length === 0) {
-            targetListDiv.innerHTML = `<p class="text-stone-500 dark:text-stone-400">Your ${type === 'inbox' ? 'inbox' : 'outbox'} is empty.</p>`;
+            targetListDiv.innerHTML = `<p class="text-stone-500 dark:text-stone-400">Your ${type} is empty.</p>`;
             return;
         }
 
         messages.forEach(msg => {
             const messageItem = document.createElement('div');
+            const isUnreadInbox = type === 'inbox' && msg.status !== 'read';
             messageItem.className = `
                 p-4 border rounded-md shadow-sm cursor-pointer
                 hover:shadow-lg transition-all duration-200 ease-in-out
-                ${msg.status !== 'read' && type === 'inbox' ? 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-400 dark:border-yellow-700 font-semibold' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'}
+                ${isUnreadInbox ? 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-400 dark:border-yellow-700 font-semibold' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'}
             `;
             messageItem.dataset.messageId = msg.id;
-            // Removed data-action here, will add event listener directly
 
-            const fromToText = type === 'inbox' ? `From: ${msg.sender?.username || 'Unknown Sender'}` : `To: ${msg.recipient?.username || 'Unknown Recipient'}`;
-            const dateToShow = type === 'inbox' ? (msg.sentAt || msg.createdAt) : (msg.sentAt || msg.createdAt);
+            const fromToUser = type === 'inbox' ? msg.sender : msg.recipient;
+            const fromToLabel = type === 'inbox' ? 'From:' : 'To:';
+            const dateToShow = msg.sentAt || msg.createdAt;
 
             messageItem.innerHTML = `
                 <div class="flex justify-between items-center mb-1">
-                    <span class="font-medium text-stone-800 dark:text-stone-200">${fromToText}</span>
+                    <span class="font-medium text-stone-800 dark:text-stone-200">${fromToLabel} ${fromToUser?.username || 'Unknown User'}</span>
                     <span class="text-xs text-stone-500 dark:text-stone-400">${formatDate(dateToShow)}</span>
                 </div>
-                <div class="text-lg text-yellow-700 dark:text-yellow-400">${msg.subject}</div>
+                <div class="text-lg ${isUnreadInbox ? 'text-yellow-700 dark:text-yellow-300' : 'text-yellow-600 dark:text-yellow-400'}">${msg.subject}</div>
                 <div class="mt-1 text-xs text-stone-500 dark:text-stone-400">
-                    Status: <span class="font-medium ${msg.status !== 'read' && type === 'inbox' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}">${msg.status}</span>
+                    Status: <span class="font-medium ${isUnreadInbox ? 'text-red-600 dark:text-red-400' : (type === 'outbox' || msg.status === 'read' ? 'text-green-600 dark:text-green-400' : 'text-stone-600 dark:text-stone-400')}">${msg.status}</span>
                     ${type === 'inbox' && msg.readAt ? ` (Read: ${formatDate(msg.readAt)})` : ''}
                 </div>
             `;
 
-            messageItem.addEventListener('click', () => handleMessageItemClick(msg)); // Add click listener
+            messageItem.addEventListener('click', () => handleMessageItemClick(msg));
             targetListDiv.appendChild(messageItem);
         });
     }
 
     /**
      * Fetches and renders inbox messages.
+     * @param {boolean} [forceRefresh=false] - Whether to force a refresh even if data was loaded.
      */
-    async function loadInboxMessages() {
-        if (inboxLoaded && currentTab === 'inbox') { // Optional: prevent re-fetch if already loaded and on tab
-            // console.log('Inbox already loaded.');
-            // return;
-        }
+    async function loadInboxMessages(forceRefresh = false) {
+        if (inboxLoaded && !forceRefresh) return;
         inboxMessageListDiv.innerHTML = '<p class="text-stone-500 dark:text-stone-400">Loading your inbox...</p>';
         try {
             const response = await api.getInboxMessages();
@@ -166,26 +162,37 @@ export function CabinetComponent() {
                 renderMessages(response.data, inboxMessageListDiv, 'inbox');
                 inboxLoaded = true;
             } else {
-                inboxMessageListDiv.innerHTML = `<p class="text-red-500">Error loading inbox: ${response.message || 'Unknown error'}</p>`;
+                inboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">Error loading inbox: ${response.message || 'Unknown error'}</p>`;
+                inboxLoaded = false;
             }
         } catch (error) {
             console.error('Failed to fetch inbox messages:', error);
-            inboxMessageListDiv.innerHTML = `<p class="text-red-500">Could not fetch your messages. ${error.message}</p>`;
+            inboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">Could not fetch your messages. ${error.message}</p>`;
+            inboxLoaded = false;
         }
     }
 
     /**
-     * Fetches and renders outbox messages. (Placeholder for future)
+     * Fetches and renders outbox messages.
+     * @param {boolean} [forceRefresh=false] - Whether to force a refresh.
      */
-    async function loadOutboxMessages() {
+    async function loadOutboxMessages(forceRefresh = false) {
+        if (outboxLoaded && !forceRefresh) return;
         outboxMessageListDiv.innerHTML = '<p class="text-stone-500 dark:text-stone-400">Loading your outbox...</p>';
-        // TODO: Implement API call and rendering for outbox
-        // const response = await api.getOutboxMessages(); ...
-        // renderMessages(response.data, outboxMessageListDiv, 'outbox');
-        // outboxLoaded = true;
-        setTimeout(() => { // Simulate delay for now
-            outboxMessageListDiv.innerHTML = '<p class="text-stone-500 dark:text-stone-400">Outbox functionality coming soon. Sent messages will appear here.</p>';
-        }, 1000);
+        try {
+            const response = await api.getOutboxMessages(); // Call the new API function
+            if (response.success) {
+                renderMessages(response.data, outboxMessageListDiv, 'outbox'); // Specify type 'outbox'
+                outboxLoaded = true;
+            } else {
+                outboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">Error loading outbox: ${response.message || 'Unknown error'}</p>`;
+                outboxLoaded = false;
+            }
+        } catch (error) {
+            console.error('Failed to fetch outbox messages:', error);
+            outboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">Could not fetch your sent messages. ${error.message}</p>`;
+            outboxLoaded = false;
+        }
     }
 
     /**
@@ -195,19 +202,16 @@ export function CabinetComponent() {
     function setActiveTab(tabName) {
         const isActiveTab = (targetTab) => tabName === targetTab;
 
-        inboxTabButton.classList.toggle('border-b-2', isActiveTab('inbox'));
-        inboxTabButton.classList.toggle('border-yellow-600', isActiveTab('inbox'));
-        inboxTabButton.classList.toggle('text-yellow-600', isActiveTab('inbox'));
-        inboxTabButton.classList.toggle('dark:text-yellow-500', isActiveTab('inbox'));
-        inboxTabButton.classList.toggle('text-stone-600', !isActiveTab('inbox'));
-        inboxTabButton.classList.toggle('dark:text-stone-400', !isActiveTab('inbox'));
-
-        outboxTabButton.classList.toggle('border-b-2', isActiveTab('outbox'));
-        outboxTabButton.classList.toggle('border-yellow-600', isActiveTab('outbox'));
-        outboxTabButton.classList.toggle('text-yellow-600', isActiveTab('outbox'));
-        outboxTabButton.classList.toggle('dark:text-yellow-500', isActiveTab('outbox'));
-        outboxTabButton.classList.toggle('text-stone-600', !isActiveTab('outbox'));
-        outboxTabButton.classList.toggle('dark:text-stone-400', !isActiveTab('outbox'));
+        [inboxTabButton, outboxTabButton].forEach(button => {
+            const isCurrentButtonActive = isActiveTab(button.dataset.tab);
+            button.classList.toggle('border-b-2', isCurrentButtonActive);
+            button.classList.toggle('border-yellow-600', isCurrentButtonActive);
+            button.classList.toggle('dark:border-yellow-500', isCurrentButtonActive);
+            button.classList.toggle('text-yellow-600', isCurrentButtonActive);
+            button.classList.toggle('dark:text-yellow-500', isCurrentButtonActive);
+            button.classList.toggle('text-stone-600', !isCurrentButtonActive);
+            button.classList.toggle('dark:text-stone-400', !isCurrentButtonActive);
+        });
 
         inboxSection.classList.toggle('hidden', !isActiveTab('inbox'));
         outboxSection.classList.toggle('hidden', !isActiveTab('outbox'));
@@ -218,15 +222,14 @@ export function CabinetComponent() {
         if (currentTab === 'inbox') {
             loadInboxMessages();
         } else if (currentTab === 'outbox') {
-            loadOutboxMessages(); // Call placeholder for now
+            loadOutboxMessages(); // Call function to load outbox messages
         }
     }
 
     inboxTabButton.addEventListener('click', () => setActiveTab('inbox'));
     outboxTabButton.addEventListener('click', () => setActiveTab('outbox'));
 
-    // Initialize by loading the default active tab's content
-    setActiveTab('inbox');
+    setActiveTab('inbox'); // Initialize with inbox view
 
     return container;
 }

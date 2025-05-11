@@ -136,6 +136,15 @@ async function getInboxMessages() {
     return await getData('/api/messages/inbox');
 }
 
+/**
+ * Fetches the logged-in user's outbox (sent) messages.
+ * @returns {Promise<object>} - Promise resolving to the server's JSON response containing outbox messages.
+ */
+async function getOutboxMessages() {
+    console.log('API: Fetching outbox messages...');
+    return await getData('/api/messages/outbox');
+}
+
 export {
     postData,
     getData,
@@ -145,5 +154,6 @@ export {
     registerUser,
     getUsers,
     sendMessage,
-    getInboxMessages
+    getInboxMessages,
+    getOutboxMessages
 };
