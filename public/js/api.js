@@ -127,6 +127,15 @@ async function sendMessage(recipientId, subject, body) {
     return await postData('/api/messages', messageData);
 }
 
+/**
+ * Fetches the logged-in user's inbox messages.
+ * @returns {Promise<object>} - Promise resolving to the server's JSON response containing inbox messages.
+ */
+async function getInboxMessages() {
+    console.log('API: Fetching inbox messages...');
+    return await getData('/api/messages/inbox');
+}
+
 export {
     postData,
     getData,
@@ -135,5 +144,6 @@ export {
     logoutUser,
     registerUser,
     getUsers,
-    sendMessage // Add new function here
+    sendMessage,
+    getInboxMessages
 };
