@@ -93,13 +93,28 @@ export function CabinetComponent() {
     }
 
     /**
+     * Handles the click event on a message item.
+     * For now, logs message details. Later will navigate to detail view.
+     * @param {object} message - The message object that was clicked.
+     */
+    function handleMessageItemClick(message) {
+        console.log('Clicked message:', message);
+        // In future:
+        // For example, update state or navigate:
+        // history.pushState({ route: 'messageDetail', messageId: message.id }, '', `/messages/${message.id}`);
+        // renderRoute('messageDetail'); // Assuming renderRoute can handle this
+        alert(`Viewing message ID: ${message.id}\nSubject: ${message.subject}\n(Detail view coming soon!)`);
+    }
+
+
+    /**
      * Renders a list of messages into the specified container.
      * @param {Array<object>} messages - An array of message objects.
      * @param {HTMLElement} targetListDiv - The div element to render messages into.
-     * @param {string} type - 'inbox' or 'outbox' to determine displayed user.
+     * @param {string} type - 'inbox' or 'outbox' to determine displayed user and styles.
      */
     function renderMessages(messages, targetListDiv, type = 'inbox') {
-        targetListDiv.innerHTML = ''; // Clear previous content (loading message or old messages)
+        targetListDiv.innerHTML = '';
 
         if (!messages || messages.length === 0) {
             targetListDiv.innerHTML = `<p class="text-stone-500 dark:text-stone-400">Your ${type === 'inbox' ? 'inbox' : 'outbox'} is empty.</p>`;
@@ -110,27 +125,28 @@ export function CabinetComponent() {
             const messageItem = document.createElement('div');
             messageItem.className = `
                 p-4 border rounded-md shadow-sm cursor-pointer
-                hover:shadow-md transition-shadow duration-200
-                ${msg.status !== 'read' && type === 'inbox' ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'}
+                hover:shadow-lg transition-all duration-200 ease-in-out
+                ${msg.status !== 'read' && type === 'inbox' ? 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-400 dark:border-yellow-700 font-semibold' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'}
             `;
             messageItem.dataset.messageId = msg.id;
-            messageItem.dataset.action = 'view-message-detail'; // For future click handling
+            // Removed data-action here, will add event listener directly
 
             const fromToText = type === 'inbox' ? `From: ${msg.sender?.username || 'Unknown Sender'}` : `To: ${msg.recipient?.username || 'Unknown Recipient'}`;
             const dateToShow = type === 'inbox' ? (msg.sentAt || msg.createdAt) : (msg.sentAt || msg.createdAt);
 
             messageItem.innerHTML = `
                 <div class="flex justify-between items-center mb-1">
-                    <span class="font-semibold text-stone-700 dark:text-stone-300">${fromToText}</span>
+                    <span class="font-medium text-stone-800 dark:text-stone-200">${fromToText}</span>
                     <span class="text-xs text-stone-500 dark:text-stone-400">${formatDate(dateToShow)}</span>
                 </div>
                 <div class="text-lg text-yellow-700 dark:text-yellow-400">${msg.subject}</div>
                 <div class="mt-1 text-xs text-stone-500 dark:text-stone-400">
-                    Status: <span class="font-medium">${msg.status}</span>
-                    ${type === 'inbox' && msg.readAt ? `(Read: ${formatDate(msg.readAt)})` : ''}
+                    Status: <span class="font-medium ${msg.status !== 'read' && type === 'inbox' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}">${msg.status}</span>
+                    ${type === 'inbox' && msg.readAt ? ` (Read: ${formatDate(msg.readAt)})` : ''}
                 </div>
             `;
-            // TODO: Add click listener to messageItem to navigate to message detail view
+
+            messageItem.addEventListener('click', () => handleMessageItemClick(msg)); // Add click listener
             targetListDiv.appendChild(messageItem);
         });
     }
