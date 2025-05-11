@@ -18,29 +18,80 @@ const bodyElement = document.body;
 // --- Scriptorium Management ---
 let scriptoriumElement = null;
 
+/**
+ * Updates the Scriptorium state to open and resets its fields.
+ * The ScriptoriumComponent will react to the state change.
+ */
 function showScriptorium() {
     if (!scriptoriumElement) {
         scriptoriumElement = ScriptoriumComponent();
         bodyElement.appendChild(scriptoriumElement);
     }
-    // Update central state to open Scriptorium and reset its fields
     setScriptoriumState({
         isOpen: true,
         recipient: null,
         subject: '',
         body: ''
     });
-    // ScriptoriumComponent's subscription to 'scriptoriumStateChanged'
-    // will handle removing 'hidden' and can also trigger loadContacts.
     console.log('App: Requested to show Scriptorium (state updated)');
 }
 
+/**
+ * Updates the Scriptorium state to closed.
+ * The ScriptoriumComponent will react.
+ */
 function hideScriptorium() {
     setScriptoriumState({ isOpen: false });
     console.log('App: Requested to hide Scriptorium (state updated)');
 }
 
+/**
+ * Handles sending a message from the Scriptorium.
+ */
+async function handleSendMessage() {
+    const scriptoriumState = getState('scriptorium');
+    if (!scriptoriumElement) return; // Should not happen if button is clickable
+
+    const sendButton = scriptoriumElement.querySelector('#scriptorium-send-button');
+
+    if (!scriptoriumState.recipient || !scriptoriumState.recipient.id ||
+        !scriptoriumState.subject?.trim() || !scriptoriumState.body?.trim()) {
+        alert('Please select a recipient and fill in both subject and body.'); // Simple validation feedback
+        return;
+    }
+
+    if (sendButton) sendButton.disabled = true; // Disable button during API call
+    // TODO: Add a visual loading indicator
+
+    try {
+        console.log('App: Attempting to send message:', scriptoriumState);
+        const result = await api.sendMessage(
+            scriptoriumState.recipient.id,
+            scriptoriumState.subject,
+            scriptoriumState.body
+        );
+
+        if (result.success) {
+            alert('Message sent successfully!'); // Simple success feedback
+            hideScriptorium(); // Close Scriptorium on success
+            // TODO: Optionally, publish a 'messageSent' event for other components (e.g., outbox) to react
+            // publish('messageSent', result.data);
+        } else {
+            alert(`Failed to send message: ${result.message || 'Unknown error'}`);
+            if (sendButton) sendButton.disabled = false; // Re-enable button on failure
+        }
+    } catch (error) {
+        console.error('App: Error sending message:', error);
+        alert(`Error sending message: ${error.message || 'Network or server error'}`);
+        if (sendButton) sendButton.disabled = false; // Re-enable button on critical failure
+    }
+}
+
 // --- Route Rendering Logic ---
+/**
+ * Renders the appropriate component into the content area based on the route name.
+ * @param {string} routeName - The name of the route (e.g., 'login', 'home').
+ */
 function renderRoute(routeName) {
     if (!contentElement) {
         console.error("FATAL ERROR: #content element not found in renderRoute!");
@@ -97,11 +148,15 @@ function renderRoute(routeName) {
 
 
 // --- Event Handlers ---
+/**
+ * Handles global click events using event delegation.
+ * @param {Event} event - The click event.
+ */
 function handleGlobalClick(event) {
     const target = event.target;
+    const currentScriptoriumState = getState('scriptorium');
 
-    const currentScriptoriumState = getState('scriptorium'); // Get current Scriptorium state
-
+    // Scriptorium specific actions
     if (currentScriptoriumState && currentScriptoriumState.isOpen) {
         if (target.closest('[data-action="close-scriptorium"]')) {
             event.preventDefault();
@@ -119,16 +174,12 @@ function handleGlobalClick(event) {
         }
         if (target.closest('[data-action="send-message"]')) {
             event.preventDefault();
-            console.log('App: Send message button clicked - logic TODO');
-            // Call a function like handleSendMessage()
-            // const { recipient, subject, body } = getState('scriptorium');
-            // if (recipient && subject && body) {
-            //   api.sendMessage(recipient.id, subject, body).then...
-            // }
+            handleSendMessage(); // Call the new handler function
             return;
         }
     }
 
+    // General navigation and auth actions
     const targetLink = target.closest('a[data-route]');
     const logoutButton = target.closest('#logout-button');
     const showScriptoriumButton = target.closest('#show-scriptorium-button');
@@ -150,6 +201,9 @@ function handleGlobalClick(event) {
     }
 }
 
+/**
+ * Handles the logout process.
+ */
 async function handleLogout() {
     console.log("App: Logout initiated...");
     try {
@@ -170,6 +224,10 @@ async function handleLogout() {
     }
 }
 
+/**
+ * Handles login and register form submissions.
+ * @param {Event} event - The submit event.
+ */
 async function handleAuthFormSubmit(event) {
     event.preventDefault();
     const form = event.target;
@@ -219,6 +277,10 @@ async function handleAuthFormSubmit(event) {
     }
 }
 
+/**
+ * Handles browser back/forward navigation.
+ * @param {Event} event - The popstate event.
+ */
 function handlePopstate(event) {
     console.log('App: Popstate event fired:', event.state);
     let route;
@@ -234,6 +296,9 @@ function handlePopstate(event) {
 }
 
 // --- Initialization ---
+/**
+ * Initializes the entire application.
+ */
 async function initializeApp() {
     console.log('App: Initializing...');
 
