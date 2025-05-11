@@ -10,6 +10,7 @@ import { LoginPageComponent } from './components/LoginPage.js';
 import { RegisterPageComponent } from './components/RegisterPage.js';
 import { HomePageComponent } from './components/HomePage.js';
 import { ScriptoriumComponent } from './components/ScriptoriumComponent.js';
+import { CabinetComponent } from './components/CabinetComponent.js'; // Import CabinetComponent
 
 // --- Core Elements ---
 const contentElement = document.getElementById('content');
@@ -50,18 +51,17 @@ function hideScriptorium() {
  */
 async function handleSendMessage() {
     const scriptoriumState = getState('scriptorium');
-    if (!scriptoriumElement) return; // Should not happen if button is clickable
+    if (!scriptoriumElement) return;
 
     const sendButton = scriptoriumElement.querySelector('#scriptorium-send-button');
 
     if (!scriptoriumState.recipient || !scriptoriumState.recipient.id ||
         !scriptoriumState.subject?.trim() || !scriptoriumState.body?.trim()) {
-        alert('Please select a recipient and fill in both subject and body.'); // Simple validation feedback
+        alert('Please select a recipient and fill in both subject and body.');
         return;
     }
 
-    if (sendButton) sendButton.disabled = true; // Disable button during API call
-    // TODO: Add a visual loading indicator
+    if (sendButton) sendButton.disabled = true;
 
     try {
         console.log('App: Attempting to send message:', scriptoriumState);
@@ -72,25 +72,23 @@ async function handleSendMessage() {
         );
 
         if (result.success) {
-            alert('Message sent successfully!'); // Simple success feedback
-            hideScriptorium(); // Close Scriptorium on success
-            // TODO: Optionally, publish a 'messageSent' event for other components (e.g., outbox) to react
-            // publish('messageSent', result.data);
+            alert('Message sent successfully!');
+            hideScriptorium();
         } else {
             alert(`Failed to send message: ${result.message || 'Unknown error'}`);
-            if (sendButton) sendButton.disabled = false; // Re-enable button on failure
+            if (sendButton) sendButton.disabled = false;
         }
     } catch (error) {
         console.error('App: Error sending message:', error);
         alert(`Error sending message: ${error.message || 'Network or server error'}`);
-        if (sendButton) sendButton.disabled = false; // Re-enable button on critical failure
+        if (sendButton) sendButton.disabled = false;
     }
 }
 
 // --- Route Rendering Logic ---
 /**
  * Renders the appropriate component into the content area based on the route name.
- * @param {string} routeName - The name of the route (e.g., 'login', 'home').
+ * @param {string} routeName - The name of the route (e.g., 'login', 'home', 'cabinet').
  */
 function renderRoute(routeName) {
     if (!contentElement) {
@@ -110,6 +108,15 @@ function renderRoute(routeName) {
         }
     }
 
+    // Ensure user is logged in for routes that require it
+    const protectedRoutes = ['home', 'cabinet', 'scriptorium']; // Add other protected routes here
+    if (protectedRoutes.includes(routeName) && !currentAppState.isLoggedIn) {
+        console.warn(`App: Access to protected route /${routeName} denied. Redirecting to /login.`);
+        history.replaceState({ route: 'login' }, '', '/login');
+        routeName = 'login'; // Force rendering login page
+    }
+
+
     switch (routeName) {
         case 'login':
             if (currentAppState.isLoggedIn) {
@@ -128,12 +135,12 @@ function renderRoute(routeName) {
             }
             break;
         case 'home':
-            if (!currentAppState.isLoggedIn) {
-                history.replaceState({ route: 'login' }, '', '/login');
-                componentElement = LoginPageComponent();
-            } else {
-                componentElement = HomePageComponent(currentAppState.currentUser);
-            }
+            // Already protected by the check above
+            componentElement = HomePageComponent(currentAppState.currentUser);
+            break;
+        case 'cabinet': // <<< --- NEW ROUTE CASE
+            // Already protected by the check above
+            componentElement = CabinetComponent();
             break;
         default:
             console.warn(`Unknown route: ${routeName}. Rendering 404 like content.`);
@@ -156,7 +163,6 @@ function handleGlobalClick(event) {
     const target = event.target;
     const currentScriptoriumState = getState('scriptorium');
 
-    // Scriptorium specific actions
     if (currentScriptoriumState && currentScriptoriumState.isOpen) {
         if (target.closest('[data-action="close-scriptorium"]')) {
             event.preventDefault();
@@ -174,12 +180,11 @@ function handleGlobalClick(event) {
         }
         if (target.closest('[data-action="send-message"]')) {
             event.preventDefault();
-            handleSendMessage(); // Call the new handler function
+            handleSendMessage();
             return;
         }
     }
 
-    // General navigation and auth actions
     const targetLink = target.closest('a[data-route]');
     const logoutButton = target.closest('#logout-button');
     const showScriptoriumButton = target.closest('#show-scriptorium-button');
@@ -191,7 +196,7 @@ function handleGlobalClick(event) {
         if (path !== window.location.pathname) {
             history.pushState({ route: route }, '', path);
         }
-        renderRoute(route);
+        renderRoute(route); // Render the view for the target route
     } else if (logoutButton) {
         event.preventDefault();
         handleLogout();
