@@ -10,7 +10,10 @@ import { LoginPageComponent } from './components/LoginPage.js';
 import { RegisterPageComponent } from './components/RegisterPage.js';
 import { HomePageComponent } from './components/HomePage.js';
 import { ScriptoriumComponent } from './components/ScriptoriumComponent.js';
-import { CabinetComponent } from './components/CabinetComponent.js'; // Import CabinetComponent
+import { CabinetComponent } from './components/CabinetComponent.js';
+import { MessageDetailComponent } from './components/MessageDetailComponent.js'; // Import MessageDetailComponent
+import { subscribe, publish } from './pubsub.js';
+
 
 // --- Core Elements ---
 const contentElement = document.getElementById('content');
@@ -74,6 +77,9 @@ async function handleSendMessage() {
         if (result.success) {
             alert('Message sent successfully!');
             hideScriptorium();
+            // Optionally, navigate to outbox or refresh cabinet view
+            publish('messageSent', { message: result.data });
+
         } else {
             alert(`Failed to send message: ${result.message || 'Unknown error'}`);
             if (sendButton) sendButton.disabled = false;
@@ -87,40 +93,48 @@ async function handleSendMessage() {
 
 // --- Route Rendering Logic ---
 /**
- * Renders the appropriate component into the content area based on the route name.
- * @param {string} routeName - The name of the route (e.g., 'login', 'home', 'cabinet').
+ * Renders the appropriate component into the content area based on the route name and path.
+ * @param {string} path - The current window.location.pathname.
  */
-function renderRoute(routeName) {
+function renderRouteByPath(path) {
     if (!contentElement) {
-        console.error("FATAL ERROR: #content element not found in renderRoute!");
+        console.error("FATAL ERROR: #content element not found in renderRouteByPath!");
         return;
     }
-
-    console.log(`App: Rendering route: ${routeName}`);
+    console.log(`App: Rendering route for path: ${path}`);
     let componentElement = null;
     const currentAppState = getState();
 
-    if (routeName === '' || routeName === '/') {
+    // Normalize path for safety, though History API should provide it correctly
+    const normalizedPath = path.startsWith('/') ? path : '/' + path;
+    const pathSegments = normalizedPath.split('/').filter(Boolean); // e.g., ['', 'message', '123'] -> ['message', '123']
+    let routeName = pathSegments[0] || (currentAppState.isLoggedIn ? 'home' : 'login');
+    let routeParam = pathSegments[1] || null;
+
+
+    if (normalizedPath === '/' || normalizedPath === '') {
         routeName = currentAppState.isLoggedIn ? 'home' : 'login';
-        const normalizedPath = '/' + routeName;
-        if (window.location.pathname !== normalizedPath) {
-            history.replaceState({ route: routeName }, '', normalizedPath);
+        const targetPath = '/' + routeName;
+        if (window.location.pathname !== targetPath) {
+            history.replaceState({ path: targetPath }, '', targetPath);
         }
     }
 
     // Ensure user is logged in for routes that require it
-    const protectedRoutes = ['home', 'cabinet', 'scriptorium']; // Add other protected routes here
+    const protectedRoutes = ['home', 'cabinet', 'scriptorium', 'message'];
     if (protectedRoutes.includes(routeName) && !currentAppState.isLoggedIn) {
-        console.warn(`App: Access to protected route /${routeName} denied. Redirecting to /login.`);
-        history.replaceState({ route: 'login' }, '', '/login');
+        console.warn(`App: Access to protected route ${normalizedPath} denied. Redirecting to /login.`);
+        const loginPath = '/login';
+        history.replaceState({ path: loginPath }, '', loginPath);
         routeName = 'login'; // Force rendering login page
+        routeParam = null; // Clear any params
     }
-
 
     switch (routeName) {
         case 'login':
             if (currentAppState.isLoggedIn) {
-                history.replaceState({ route: 'home' }, '', '/home');
+                const homePath = '/home';
+                history.replaceState({ path: homePath }, '', homePath);
                 componentElement = HomePageComponent(currentAppState.currentUser);
             } else {
                 componentElement = LoginPageComponent();
@@ -128,24 +142,38 @@ function renderRoute(routeName) {
             break;
         case 'register':
             if (currentAppState.isLoggedIn) {
-                history.replaceState({ route: 'home' }, '', '/home');
+                const homePath = '/home';
+                history.replaceState({ path: homePath }, '', homePath);
                 componentElement = HomePageComponent(currentAppState.currentUser);
             } else {
                 componentElement = RegisterPageComponent();
             }
             break;
         case 'home':
-            // Already protected by the check above
             componentElement = HomePageComponent(currentAppState.currentUser);
             break;
-        case 'cabinet': // <<< --- NEW ROUTE CASE
-            // Already protected by the check above
+        case 'cabinet':
             componentElement = CabinetComponent();
             break;
+        case 'message': // New route for message detail
+            if (routeParam) { // Expects an ID, e.g., /message/123
+                componentElement = MessageDetailComponent(routeParam);
+            } else {
+                console.warn(`App: Missing message ID for /message route. Redirecting to /cabinet.`);
+                const cabinetPath = '/cabinet';
+                history.replaceState({ path: cabinetPath }, '', cabinetPath);
+                componentElement = CabinetComponent(); // Or a specific error component
+            }
+            break;
         default:
-            console.warn(`Unknown route: ${routeName}. Rendering 404 like content.`);
+            console.warn(`Unknown route: ${routeName} from path ${normalizedPath}. Rendering 404-like content.`);
             componentElement = document.createElement('div');
-            componentElement.innerHTML = '<h2 class="text-xl font-semibold mb-4">404 - Page Not Found</h2><p>Sorry, the page you requested does not exist.</p>';
+            componentElement.className = 'p-6';
+            componentElement.innerHTML = `
+                <h2 class="text-2xl font-semibold text-red-600 mb-4">404 - Page Not Found</h2>
+                <p class="text-gray-700 dark:text-gray-300">Sorry, the page you requested (${normalizedPath}) does not exist.</p>
+                <a href="/home" data-route="home" class="mt-4 inline-block text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Return to Home</a>
+            `;
     }
 
     if (componentElement) {
@@ -163,6 +191,7 @@ function handleGlobalClick(event) {
     const target = event.target;
     const currentScriptoriumState = getState('scriptorium');
 
+    // Scriptorium specific actions
     if (currentScriptoriumState && currentScriptoriumState.isOpen) {
         if (target.closest('[data-action="close-scriptorium"]')) {
             event.preventDefault();
@@ -173,7 +202,7 @@ function handleGlobalClick(event) {
             event.preventDefault();
             const selectRecipientButton = target.closest('[data-action="select-recipient"]');
             const userId = parseInt(selectRecipientButton.dataset.userId, 10);
-            const username = selectRecipientButton.textContent;
+            const username = selectRecipientButton.textContent; // Or a data attribute for username
             setScriptoriumState({ recipient: { id: userId, username: username } });
             console.log(`App: Selected recipient set in state: ${username} (ID: ${userId})`);
             return;
@@ -185,24 +214,48 @@ function handleGlobalClick(event) {
         }
     }
 
+    // Generic navigation links (data-route)
     const targetLink = target.closest('a[data-route]');
-    const logoutButton = target.closest('#logout-button');
-    const showScriptoriumButton = target.closest('#show-scriptorium-button');
-
     if (targetLink) {
         event.preventDefault();
-        const route = targetLink.getAttribute('data-route');
         const path = targetLink.getAttribute('href');
         if (path !== window.location.pathname) {
-            history.pushState({ route: route }, '', path);
+            history.pushState({ path: path }, '', path);
         }
-        renderRoute(route); // Render the view for the target route
-    } else if (logoutButton) {
+        renderRouteByPath(path);
+        return;
+    }
+
+    // Specific button actions
+    const logoutButton = target.closest('#logout-button');
+    if (logoutButton) {
         event.preventDefault();
         handleLogout();
-    } else if (showScriptoriumButton) {
+        return;
+    }
+
+    const showScriptoriumButton = target.closest('#show-scriptorium-button');
+    if (showScriptoriumButton) {
         event.preventDefault();
         showScriptorium();
+        return;
+    }
+
+    // Handle clicks on message items within CabinetComponent
+    // This requires CabinetComponent to add a `data-action="view-message"` and `data-message-id`
+    const messageItemLink = target.closest('[data-action="view-message"]');
+    if (messageItemLink) {
+        event.preventDefault();
+        const messageId = messageItemLink.dataset.messageId;
+        if (messageId) {
+            const path = `/message/${messageId}`;
+            console.log(`App: Navigating to message detail: ${path}`);
+            history.pushState({ path: path }, '', path);
+            renderRouteByPath(path);
+        } else {
+            console.warn('App: Clicked view-message action but messageId is missing.');
+        }
+        return;
     }
 }
 
@@ -216,10 +269,9 @@ async function handleLogout() {
         if (result.success) {
             setAuthState(false, null);
             setScriptoriumState({ isOpen: false, recipient: null, subject: '', body: '' });
-            const route = 'login';
-            const path = '/login';
-            history.pushState({ route: route }, '', path);
-            renderRoute(route);
+            const loginPath = '/login';
+            history.pushState({ path: loginPath }, '', loginPath);
+            renderRouteByPath(loginPath);
         } else {
             throw new Error(result.message || 'Logout failed');
         }
@@ -246,30 +298,27 @@ async function handleAuthFormSubmit(event) {
 
     try {
         let result;
-        let nextRoute = null;
         let nextPath = null;
 
         if (form.id === 'login-form') {
             result = await api.loginUser(data.email, data.password);
             if (result.success) {
                 setAuthState(true, result.user);
-                nextRoute = 'home';
                 nextPath = '/home';
             } else { throw new Error(result.message || 'Login failed'); }
         } else if (form.id === 'register-form') {
             result = await api.registerUser(data.username, data.email, data.password);
             if (result.success) {
-                nextRoute = 'login';
                 nextPath = '/login';
                 alert("Registration successful! Please log in.");
             } else { throw new Error(result.message || 'Registration failed'); }
         }
 
-        if (nextRoute && nextPath) {
+        if (nextPath) {
             if (nextPath !== window.location.pathname) {
-                history.pushState({ route: nextRoute }, '', nextPath);
+                history.pushState({ path: nextPath }, '', nextPath);
             }
-            renderRoute(nextRoute);
+            renderRouteByPath(nextPath);
         }
     } catch (error) {
         console.error(`App: Form ${form.id} submission error:`, error);
@@ -283,21 +332,21 @@ async function handleAuthFormSubmit(event) {
 }
 
 /**
- * Handles browser back/forward navigation.
- * @param {Event} event - The popstate event.
+ * Handles browser back/forward navigation (popstate event).
+ * @param {PopStateEvent} event - The popstate event.
  */
 function handlePopstate(event) {
     console.log('App: Popstate event fired:', event.state);
-    let route;
-    if (event.state && event.state.route) {
-        route = event.state.route;
+    let path;
+    if (event.state && event.state.path) {
+        path = event.state.path;
     } else {
-        const path = window.location.pathname;
-        const currentAppState = getState();
-        route = path.substring(1) || (currentAppState.isLoggedIn ? 'home' : 'login');
-        history.replaceState({ route: route }, '', path);
+        // Fallback if state is null or path is missing (e.g. initial load or external navigation)
+        path = window.location.pathname;
+        // Ensure state object is consistent even if it was initially null
+        history.replaceState({ path: path }, '', path);
     }
-    renderRoute(route);
+    renderRouteByPath(path);
 }
 
 // --- Initialization ---
@@ -310,28 +359,42 @@ async function initializeApp() {
     bodyElement.addEventListener('click', handleGlobalClick);
 
     if (contentElement) {
-        contentElement.addEventListener('submit', handleAuthFormSubmit);
+        contentElement.addEventListener('submit', handleAuthFormSubmit); // For login/register forms
     } else {
         console.error("FATAL ERROR: #content element not found! Auth forms may not work.");
     }
 
     window.addEventListener('popstate', handlePopstate);
 
+    // Subscribe to navigateToRoute events (e.g., from MessageDetailComponent's "Back" button)
+    subscribe('navigateToRoute', (data) => {
+        if (data && data.routeName) {
+            const path = `/${data.routeName}`; // Assuming simple route names for now
+            if (path !== window.location.pathname) {
+                history.pushState({ path: path }, '', path);
+            }
+            renderRouteByPath(path);
+        }
+    });
+
     try {
         const authStatus = await api.checkAuthStatus();
         setAuthState(authStatus.isLoggedIn, authStatus.user || null);
     } catch (error) {
         console.error("App: Failed to fetch initial auth status:", error);
-        setAuthState(false, null);
+        setAuthState(false, null); // Assume logged out on error
     }
 
+    // Ensure scriptorium state is initialized
     setScriptoriumState({ isOpen: false, recipient: null, subject: '', body: '' });
 
+    // Initial route rendering based on current URL path
     const initialPath = window.location.pathname;
-    const initialRoute = initialPath.substring(1) || (getState('isLoggedIn') ? 'home' : 'login');
-    renderRoute(initialRoute);
+    history.replaceState({ path: initialPath }, '', initialPath); // Ensure initial state has path
+    renderRouteByPath(initialPath);
 
     console.log("App: Initialization complete.");
 }
 
+// Wait for the DOM to be fully loaded before initializing the app
 document.addEventListener('DOMContentLoaded', initializeApp);

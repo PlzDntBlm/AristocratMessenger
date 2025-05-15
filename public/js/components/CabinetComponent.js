@@ -3,8 +3,7 @@
  * Defines the Cabinet (view messages) component, allowing users to see their inbox and outbox.
  */
 import * as api from '../api.js';
-// import { getState } from '../state.js'; // Not currently needed
-// import { publish } from '../pubsub.js'; // For future navigation events
+import { publish, subscribe } from '../pubsub.js';
 
 /**
  * Creates and returns the root DOM element for the Letter Cabinet page.
@@ -72,7 +71,7 @@ export function CabinetComponent() {
 
     let currentTab = 'inbox';
     let inboxLoaded = false;
-    let outboxLoaded = false; // Flag for outbox
+    let outboxLoaded = false;
 
     /**
      * Formats a date string or Date object into a more readable format.
@@ -93,46 +92,39 @@ export function CabinetComponent() {
     }
 
     /**
-     * Handles the click event on a message item.
-     * For now, logs message details. Later will navigate to detail view or trigger an event.
-     * @param {object} message - The message object that was clicked.
-     */
-    function handleMessageItemClick(message) {
-        console.log('Cabinet: Clicked message object:', message);
-        alert(`Viewing message ID: ${message.id}\nSubject: "${message.subject}"\n(Full detail view coming soon!)`);
-        // Future:
-        // publish('navigateToMessageDetail', { messageId: message.id });
-    }
-
-    /**
      * Renders a list of messages into the specified container.
+     * Each message item will now be a clickable element that triggers navigation.
      * @param {Array<object>} messages - An array of message objects.
      * @param {HTMLElement} targetListDiv - The div element to render messages into.
      * @param {string} type - 'inbox' or 'outbox' to determine displayed user and styles.
      */
     function renderMessages(messages, targetListDiv, type = 'inbox') {
-        targetListDiv.innerHTML = '';
+        targetListDiv.innerHTML = ''; // Clear previous content
 
         if (!messages || messages.length === 0) {
-            targetListDiv.innerHTML = `<p class="text-stone-500 dark:text-stone-400">Your ${type} is empty.</p>`;
+            targetListDiv.innerHTML = `<p class="text-stone-500 dark:text-stone-400">Your ${type} is currently empty.</p>`;
             return;
         }
 
         messages.forEach(msg => {
-            const messageItem = document.createElement('div');
+            const messageItemAnchor = document.createElement('a'); // Changed to anchor for semantic navigation
+            messageItemAnchor.href = `/message/${msg.id}`; // Set the href for direct navigation fallback
+            messageItemAnchor.dataset.action = 'view-message'; // For SPA click handling
+            messageItemAnchor.dataset.messageId = msg.id;
+
             const isUnreadInbox = type === 'inbox' && msg.status !== 'read';
-            messageItem.className = `
-                p-4 border rounded-md shadow-sm cursor-pointer
+            messageItemAnchor.className = `
+                block p-4 border rounded-md shadow-sm cursor-pointer
                 hover:shadow-lg transition-all duration-200 ease-in-out
+                focus:outline-none focus:ring-2 focus:ring-yellow-500
                 ${isUnreadInbox ? 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-400 dark:border-yellow-700 font-semibold' : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700'}
             `;
-            messageItem.dataset.messageId = msg.id;
 
             const fromToUser = type === 'inbox' ? msg.sender : msg.recipient;
             const fromToLabel = type === 'inbox' ? 'From:' : 'To:';
             const dateToShow = msg.sentAt || msg.createdAt;
 
-            messageItem.innerHTML = `
+            messageItemAnchor.innerHTML = `
                 <div class="flex justify-between items-center mb-1">
                     <span class="font-medium text-stone-800 dark:text-stone-200">${fromToLabel} ${fromToUser?.username || 'Unknown User'}</span>
                     <span class="text-xs text-stone-500 dark:text-stone-400">${formatDate(dateToShow)}</span>
@@ -143,9 +135,8 @@ export function CabinetComponent() {
                     ${type === 'inbox' && msg.readAt ? ` (Read: ${formatDate(msg.readAt)})` : ''}
                 </div>
             `;
-
-            messageItem.addEventListener('click', () => handleMessageItemClick(msg));
-            targetListDiv.appendChild(messageItem);
+            // Click handling is now managed by handleGlobalClick in app.js via data-action attribute
+            targetListDiv.appendChild(messageItemAnchor);
         });
     }
 
@@ -155,19 +146,19 @@ export function CabinetComponent() {
      */
     async function loadInboxMessages(forceRefresh = false) {
         if (inboxLoaded && !forceRefresh) return;
-        inboxMessageListDiv.innerHTML = '<p class="text-stone-500 dark:text-stone-400">Loading your inbox...</p>';
+        inboxMessageListDiv.innerHTML = '<p class="text-stone-500 dark:text-stone-400 p-2">Loading your inbox...</p>';
         try {
             const response = await api.getInboxMessages();
             if (response.success) {
                 renderMessages(response.data, inboxMessageListDiv, 'inbox');
                 inboxLoaded = true;
             } else {
-                inboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">Error loading inbox: ${response.message || 'Unknown error'}</p>`;
+                inboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400 p-2">Error loading inbox: ${response.message || 'Unknown error'}</p>`;
                 inboxLoaded = false;
             }
         } catch (error) {
             console.error('Failed to fetch inbox messages:', error);
-            inboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">Could not fetch your messages. ${error.message}</p>`;
+            inboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400 p-2">Could not fetch your messages. ${error.message}</p>`;
             inboxLoaded = false;
         }
     }
@@ -178,19 +169,19 @@ export function CabinetComponent() {
      */
     async function loadOutboxMessages(forceRefresh = false) {
         if (outboxLoaded && !forceRefresh) return;
-        outboxMessageListDiv.innerHTML = '<p class="text-stone-500 dark:text-stone-400">Loading your outbox...</p>';
+        outboxMessageListDiv.innerHTML = '<p class="text-stone-500 dark:text-stone-400 p-2">Loading your outbox...</p>';
         try {
-            const response = await api.getOutboxMessages(); // Call the new API function
+            const response = await api.getOutboxMessages();
             if (response.success) {
-                renderMessages(response.data, outboxMessageListDiv, 'outbox'); // Specify type 'outbox'
+                renderMessages(response.data, outboxMessageListDiv, 'outbox');
                 outboxLoaded = true;
             } else {
-                outboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">Error loading outbox: ${response.message || 'Unknown error'}</p>`;
+                outboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400 p-2">Error loading outbox: ${response.message || 'Unknown error'}</p>`;
                 outboxLoaded = false;
             }
         } catch (error) {
             console.error('Failed to fetch outbox messages:', error);
-            outboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">Could not fetch your sent messages. ${error.message}</p>`;
+            outboxMessageListDiv.innerHTML = `<p class="text-red-500 dark:text-red-400 p-2">Could not fetch your sent messages. ${error.message}</p>`;
             outboxLoaded = false;
         }
     }
@@ -222,14 +213,41 @@ export function CabinetComponent() {
         if (currentTab === 'inbox') {
             loadInboxMessages();
         } else if (currentTab === 'outbox') {
-            loadOutboxMessages(); // Call function to load outbox messages
+            loadOutboxMessages();
         }
     }
 
     inboxTabButton.addEventListener('click', () => setActiveTab('inbox'));
     outboxTabButton.addEventListener('click', () => setActiveTab('outbox'));
 
-    setActiveTab('inbox'); // Initialize with inbox view
+    // Listen for events that might require a list refresh
+    const messageSentUnsubscribe = subscribe('messageSent', () => {
+        if (currentTab === 'outbox') {
+            loadOutboxMessages(true); // Force refresh outbox
+        } else {
+            outboxLoaded = false; // Mark for refresh when tab is next visited
+        }
+    });
+    const messageReadUnsubscribe = subscribe('messageRead', () => {
+        // This event is published when a message is read (e.g., by MessageDetailComponent)
+        if (currentTab === 'inbox') {
+            loadInboxMessages(true); // Force refresh inbox to update read status
+        } else {
+            inboxLoaded = false; // Mark for refresh when tab is next visited
+        }
+    });
+
+    // Clean up subscriptions when the component is notionally "destroyed"
+    // This is a simplified cleanup; real component lifecycle management would be more robust.
+    // For now, we'll assume it's fine, but in a larger SPA, you'd handle this.
+    // Example: container.addEventListener('removedfromdom', () => {
+    //    messageSentUnsubscribe.unsubscribe();
+    //    messageReadUnsubscribe.unsubscribe();
+    // });
+
+
+    // Initialize with inbox view
+    setActiveTab('inbox');
 
     return container;
 }

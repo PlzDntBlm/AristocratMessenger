@@ -145,6 +145,17 @@ async function getOutboxMessages() {
     return await getData('/api/messages/outbox');
 }
 
+/**
+ * Fetches a single message by its ID.
+ * The backend API endpoint already handles marking the message as read if the requester is the recipient.
+ * @param {string|number} messageId - The ID of the message to fetch.
+ * @returns {Promise<object>} - Promise resolving to the server's JSON response containing the message.
+ */
+async function getMessageById(messageId) {
+    console.log(`API: Fetching message by ID: ${messageId}...`);
+    return await getData(`/api/messages/${messageId}`);
+}
+
 export {
     postData,
     getData,
@@ -155,5 +166,6 @@ export {
     getUsers,
     sendMessage,
     getInboxMessages,
-    getOutboxMessages
+    getOutboxMessages,
+    getMessageById
 };
