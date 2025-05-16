@@ -45,6 +45,9 @@ app.set('views', path.join(__dirname, 'views'));
 // IMPORTANT: Placed BEFORE any specific or catch-all routes.
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve leaflet.css and other leaflet assets (like images for markers) from node_modules
+app.use('/libs/leaflet', express.static(path.join(__dirname, 'node_modules/leaflet/dist')));
+
 // Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

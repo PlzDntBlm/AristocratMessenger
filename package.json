@@ -20,6 +20,7 @@
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-session": "^1.18.1",
+    "leaflet": "^1.9.4",
     "mysql2": "^3.14.0",
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.2"
