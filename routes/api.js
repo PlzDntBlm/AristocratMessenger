@@ -4,7 +4,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const { User, Message } = require('../models'); // Import User and Message models
+const { User, Message ,Location} = require('../models'); // Import User and Message models
 const { isAuthenticated } = require('../middleware/authMiddleware'); // Import isAuthenticated middleware
 const { Op } = require('sequelize'); // For OR queries
 
@@ -212,6 +212,29 @@ router.put('/messages/:id/read', isAuthenticated, async (req, res) => {
     } catch (error) {
         console.error(`Error marking message ${messageId} as read:`, error);
         res.status(500).json({ success: false, message: 'Failed to mark message as read.' });
+    }
+});
+
+// --- Location API Endpoints ---
+/**
+ * GET /api/locations
+ * Fetches all locations along with basic user information (username) for map display.
+ * Requires authentication.
+ */
+router.get('/locations', isAuthenticated, async (req, res) => {
+    try {
+        const locations = await Location.findAll({
+            include: [{
+                model: User,
+                as: 'user', // Alias defined in Location.associate
+                attributes: ['id', 'username'] // Only fetch necessary user attributes
+            }],
+            order: [['name', 'ASC']] // Optional: order by location name
+        });
+        res.json({ success: true, data: locations });
+    } catch (error) {
+        console.error('Error fetching locations:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch locations.' });
     }
 });
 
