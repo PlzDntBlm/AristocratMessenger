@@ -2,181 +2,188 @@
  * public/js/components/MapComponent.js
  * Defines the Map component for displaying user locations.
  */
-import L from 'leaflet'; // Import Leaflet
+// import L from 'leaflet'; // <<<--- REMOVE THIS LINE
 import * as api from '../api.js';
 import { getState, setScriptoriumState } from '../state.js';
-import { publish } from '../pubsub.js';
+// import { publish } from '../pubsub.js';
 
 /**
  * Creates and returns the root DOM element for the Map view.
  * Initializes a Leaflet map and populates it with user locations.
  * @param {object} options - Configuration options for the map.
- * @param {number} options.initialWidth - The initial width for the map container.
- * @param {number} options.initialHeight - The initial height for the map container.
+ * @param {number} options.initialWidth - The initial width for the map container in pixels.
+ * @param {number} options.initialHeight - The initial height for the map container in pixels.
  * @returns {HTMLElement} The main container element for the Map.
  */
 export function MapComponent({ initialWidth = 800, initialHeight = 600 } = {}) {
+    // ... (rest of the component code remains the same, it will use the global L) ...
+    // For example, when it calls L.map(...), L will be from the global scope.
+    // ...
+    // Make sure all references to `L.` are still valid, e.g., `L.map`, `L.CRS.Simple`, `L.circleMarker`, etc.
+    // They should be, as Leaflet defines `L` globally when included via <script>.
     const mapContainer = document.createElement('div');
-    mapContainer.id = 'aristocrat-map';
-    // Apply static dimensions directly to the map container
+    mapContainer.id = 'aristocrat-map-container';
     mapContainer.style.width = `${initialWidth}px`;
     mapContainer.style.height = `${initialHeight}px`;
-    mapContainer.style.border = '2px solid #57534e'; // A simple border, can be styled further
-    mapContainer.style.backgroundColor = '#f5f5f4'; // A light placeholder background
-    mapContainer.style.margin = '0 auto'; // Center it if HomePageComponent allows
+    mapContainer.style.border = '2px solid #78716c';
+    mapContainer.style.backgroundColor = '#e7e5e4';
+    mapContainer.style.margin = '20px auto';
+    mapContainer.style.position = 'relative';
 
-    const loadingMessage = document.createElement('p');
-    loadingMessage.className = 'p-4 text-stone-600 dark:text-stone-400';
-    loadingMessage.textContent = 'Loading map and locations...';
-    mapContainer.appendChild(loadingMessage);
+    const actualMapDiv = document.createElement('div');
+    actualMapDiv.id = 'aristocrat-leaflet-map';
+    actualMapDiv.style.width = '100%';
+    actualMapDiv.style.height = '100%';
+    mapContainer.appendChild(actualMapDiv);
 
-    let map = null; // To hold the Leaflet map instance
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.style.position = 'absolute';
+    loadingOverlay.style.top = '0';
+    loadingOverlay.style.left = '0';
+    loadingOverlay.style.width = '100%';
+    loadingOverlay.style.height = '100%';
+    loadingOverlay.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+    loadingOverlay.style.display = 'flex';
+    loadingOverlay.style.alignItems = 'center';
+    loadingOverlay.style.justifyContent = 'center';
+    loadingOverlay.style.zIndex = '1000';
+    loadingOverlay.innerHTML = '<p class="text-stone-700 text-lg">Loading map and locations...</p>';
+    mapContainer.appendChild(loadingOverlay);
 
-    /**
-     * Initializes the Leaflet map.
-     * @async
-     */
+    let map = null;
+
     async function initializeMap() {
-        if (map) { // If map already initialized, clear it or return
+        if (map) {
             map.remove();
             map = null;
         }
-        mapContainer.innerHTML = ''; // Clear loading message or previous map
-        // Re-apply static dimensions because innerHTML clears style if not set on mapContainer itself
-        mapContainer.style.width = `${initialWidth}px`;
-        mapContainer.style.height = `${initialHeight}px`;
+        loadingOverlay.style.display = 'flex';
 
-        // Define map bounds (0-100 km for x and y)
-        // Leaflet's Simple CRS uses [y, x] for coordinates by default.
-        // Bounds are [[south, west], [north, east]] or [[minY, minX], [maxY, maxX]]
-        const mapBounds = [[0, 0], [100, 100]]; // y goes from 0 to 100, x goes from 0 to 100
+        const mapBounds = [[0, 0], [100, 100]];
 
-        map = L.map(mapContainer, {
-            crs: L.CRS.Simple, // Use a simple Cartesian coordinate system
-            minZoom: -1,      // Adjust min/max zoom as needed for your map scale
-            maxZoom: 3,
-            attributionControl: false // Hide default Leaflet attribution
+        map = L.map(actualMapDiv, { // L is now global
+            crs: L.CRS.Simple,    // L is now global
+            minZoom: -1,
+            maxZoom: 4,
+            attributionControl: false,
+            scrollWheelZoom: true,
         });
 
-        // Placeholder background (a colored div)
-        // When you have an image: L.imageOverlay('path/to/your/map_image.jpg', mapBounds).addTo(map);
-        // For now, just fit bounds to make the area usable
+        actualMapDiv.style.backgroundColor = '#d6d3d1';
         map.fitBounds(mapBounds);
-        map.setView([50, 50], 0); // Center on [y,x] = [50,50] (center of 100x100 map), initial zoom
 
-        console.log('MapComponent: Leaflet map initialized.');
-        await loadLocations();
-    }
-
-    /**
-     * Fetches locations from the API and adds them to the map.
-     * @async
-     */
-    async function loadLocations() {
-        if (!map) return;
+        const currentUser = getState('currentUser');
+        let initialCenter = [50, 50];
+        let initialZoom = 0;
 
         try {
-            const response = await api.getLocations(); // Ensure this function exists in api.js
+            const response = await api.getLocations();
             if (response.success && response.data) {
-                const locations = response.data;
-                console.log('MapComponent: Fetched locations', locations);
-                renderMarkers(locations);
-
-                // Center on current user's location if available
-                const currentUser = getState('currentUser');
                 if (currentUser && currentUser.id) {
-                    const userLocation = locations.find(loc => loc.UserId === currentUser.id);
+                    const userLocation = response.data.find(loc => loc.UserId === currentUser.id);
                     if (userLocation) {
-                        map.setView([userLocation.y, userLocation.x], 1); // Zoom in a bit on user's location
+                        initialCenter = [userLocation.y, userLocation.x];
+                        initialZoom = 1;
                     }
                 }
-
+                map.setView(initialCenter, initialZoom);
+                console.log('MapComponent: Leaflet map initialized and centered.');
+                renderMarkers(response.data);
             } else {
-                console.error('MapComponent: Failed to load locations -', response.message);
-                mapContainer.innerHTML = `<p class="text-red-500 p-4">Could not load locations: ${response.message || 'Unknown error'}</p>`;
+                map.setView(initialCenter, initialZoom);
+                console.warn('MapComponent: Failed to load locations for initial centering -', response.message);
+                showError('Could not load locations for map.');
             }
         } catch (error) {
-            console.error('MapComponent: Error fetching locations:', error);
-            mapContainer.innerHTML = `<p class="text-red-500 p-4">Error fetching locations: ${error.message}</p>`;
+            map.setView(initialCenter, initialZoom);
+            console.error('MapComponent: Error fetching locations for initial centering:', error);
+            showError('Error fetching locations.');
+        } finally {
+            loadingOverlay.style.display = 'none';
         }
     }
 
-    /**
-     * Renders location markers on the map.
-     * @param {Array<object>} locations - Array of location objects.
-     */
+    function showError(messageText) {
+        actualMapDiv.innerHTML = `<p class="text-red-600 p-4">${messageText}</p>`;
+        loadingOverlay.style.display = 'none';
+    }
+
     function renderMarkers(locations) {
         if (!map) return;
-
         locations.forEach(loc => {
             if (typeof loc.x === 'number' && typeof loc.y === 'number') {
-                const marker = L.circleMarker([loc.y, loc.x], { // Leaflet uses [lat, lng] or [y, x] for simple CRS
-                    radius: 6,
-                    fillColor: '#D97706', // Amber-600
-                    color: '#9A3412',    // Amber-800
-                    weight: 1,
+                const marker = L.circleMarker([loc.y, loc.x], { // L is now global
+                    radius: 7,
+                    fillColor: '#fbbf24',
+                    color: '#b45309',
+                    weight: 2,
                     opacity: 1,
-                    fillOpacity: 0.8
+                    fillOpacity: 0.7
                 }).addTo(map);
 
-                let popupContent = `
-                    <div class="font-semibold text-lg text-stone-700">${loc.name || 'Unnamed Location'}</div>
-                    <div class="text-sm text-stone-600">Type: ${loc.type || 'N/A'}</div>
+                marker.bindTooltip(loc.name || 'Unnamed Location', {
+                    permanent: false,
+                    direction: 'top',
+                    offset: [0, -7]
+                });
+
+                let popupContentHTML = `
+                    <div class="p-1">
+                        <div class="font-semibold text-md text-stone-800 dark:text-stone-200 mb-1">${loc.name || 'Unnamed Location'}</div>
+                        <div class="text-xs text-stone-600 dark:text-stone-400">Type: ${loc.type || 'N/A'}</div>
                 `;
                 if (loc.user) {
-                    popupContent += `<div class="text-sm text-stone-500">Owner: ${loc.user.username}</div>`;
+                    popupContentHTML += `<div class="text-xs text-stone-500 dark:text-stone-300">Owner: ${loc.user.username}</div>`;
                 }
                 if (loc.description) {
-                    popupContent += `<p class="mt-1 text-xs text-stone-500">${loc.description}</p>`;
+                    popupContentHTML += `<p class="mt-1 text-xs text-stone-500 dark:text-stone-300">${loc.description}</p>`;
                 }
 
-                // Add "Send Message" button if the location has a user and it's not the current user
                 const currentUser = getState('currentUser');
                 if (loc.user && currentUser && loc.user.id !== currentUser.id) {
-                    const sendMessageButtonId = `send-message-to-${loc.user.id}-loc-${loc.id}`;
-                    popupContent += `
-                        <button id="${sendMessageButtonId}"
-                                class="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold py-1 px-2 rounded"
+                    const buttonId = `map-send-msg-btn-${loc.user.id}`;
+                    popupContentHTML += `
+                        <button id="${buttonId}"
+                                class="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold py-1 px-2 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500"
                                 data-recipient-id="${loc.user.id}"
-                                data-recipient-username="${loc.user.username}">
+                                data-recipient-username="${loc.user.username}"
+                                data-location-name="${loc.name || 'Unnamed Location'}">
                             Send Message
                         </button>
                     `;
                 }
-                marker.bindPopup(popupContent);
+                popupContentHTML += `</div>`;
+                marker.bindPopup(popupContentHTML, { minWidth: 180 });
             } else {
                 console.warn('MapComponent: Location with invalid coordinates skipped:', loc);
             }
         });
     }
 
-    // Event delegation for "Send Message" buttons inside popups
-    mapContainer.addEventListener('click', function(event) {
-        if (event.target && event.target.matches('button[data-recipient-id]')) {
-            const recipientId = event.target.dataset.recipientId;
-            const recipientUsername = event.target.dataset.recipientUsername;
+    actualMapDiv.addEventListener('click', function(event) {
+        let target = event.target;
+        if (target.tagName === 'I' && target.parentElement.matches('button[data-recipient-id]')) {
+            target = target.parentElement;
+        }
+
+        if (target && target.matches('button[data-recipient-id]')) {
+            const recipientId = target.dataset.recipientId;
+            const recipientUsername = target.dataset.recipientUsername;
+            const locationName = target.dataset.locationName;
 
             if (recipientId && recipientUsername) {
                 console.log(`MapComponent: Opening Scriptorium for User ID: ${recipientId} (${recipientUsername})`);
                 setScriptoriumState({
                     isOpen: true,
                     recipient: { id: parseInt(recipientId, 10), username: recipientUsername },
-                    subject: `Regarding your location: ${event.target.closest('.leaflet-popup-content').querySelector('.font-semibold').textContent}`, // Pre-fill subject
-                    body: ''
+                    subject: `Regarding ${locationName}`,
+                    body: `Greetings from the map,\n\nI am writing to you concerning your location, ${locationName}.\n\n`
                 });
-                // ScriptoriumComponent itself should react to isOpen state change.
-                // If map is not full screen and Scriptorium opens as overlay, it should work.
-                // Close the popup
                 if(map && map.closePopup) map.closePopup();
             }
         }
     });
 
-
-    // Initial load
-    // Use a small delay to ensure the container is in the DOM and has dimensions,
-    // especially if rendered into a dynamically created part of HomePageComponent.
     setTimeout(initializeMap, 0);
-
     return mapContainer;
 }

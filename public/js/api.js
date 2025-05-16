@@ -156,6 +156,15 @@ async function getMessageById(messageId) {
     return await getData(`/api/messages/${messageId}`);
 }
 
+/**
+ * Fetches all locations to display on the map.
+ * @returns {Promise<object>} - Promise resolving to the server's JSON response containing locations.
+ */
+async function getLocations() {
+    console.log('API: Fetching all locations...');
+    return await getData('/api/locations');
+}
+
 export {
     postData,
     getData,
@@ -167,5 +176,6 @@ export {
     sendMessage,
     getInboxMessages,
     getOutboxMessages,
-    getMessageById
+    getMessageById,
+    getLocations
 };
