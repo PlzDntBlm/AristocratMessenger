@@ -4,14 +4,15 @@
  * manages interaction between state, api, and component rendering.
  */
 import * as api from './api.js';
-import { getState, setAuthState, setScriptoriumState } from './state.js';
+import { getState, setAuthState, setScriptoriumState, setProfilePaneState } from './state.js'; // Import setProfilePaneState
 import { renderContent, renderNavbar } from './ui.js';
 import { LoginPageComponent } from './components/LoginPage.js';
 import { RegisterPageComponent } from './components/RegisterPage.js';
 import { HomePageComponent } from './components/HomePage.js';
 import { ScriptoriumComponent } from './components/ScriptoriumComponent.js';
 import { CabinetComponent } from './components/CabinetComponent.js';
-import { MessageDetailComponent } from './components/MessageDetailComponent.js'; // Import MessageDetailComponent
+import { MessageDetailComponent } from './components/MessageDetailComponent.js';
+// ProfilePaneComponent is instantiated by HomePageComponent and added to body, not directly routed for now.
 import { subscribe, publish } from './pubsub.js';
 
 
@@ -20,11 +21,10 @@ const contentElement = document.getElementById('content');
 const bodyElement = document.body;
 
 // --- Scriptorium Management ---
-let scriptoriumElement = null;
+let scriptoriumElement = null; // Scriptorium is an overlay, managed here
 
 /**
  * Updates the Scriptorium state to open and resets its fields.
- * The ScriptoriumComponent will react to the state change.
  */
 function showScriptorium() {
     if (!scriptoriumElement) {
@@ -42,7 +42,6 @@ function showScriptorium() {
 
 /**
  * Updates the Scriptorium state to closed.
- * The ScriptoriumComponent will react.
  */
 function hideScriptorium() {
     setScriptoriumState({ isOpen: false });
@@ -55,31 +54,18 @@ function hideScriptorium() {
 async function handleSendMessage() {
     const scriptoriumState = getState('scriptorium');
     if (!scriptoriumElement) return;
-
     const sendButton = scriptoriumElement.querySelector('#scriptorium-send-button');
-
-    if (!scriptoriumState.recipient || !scriptoriumState.recipient.id ||
-        !scriptoriumState.subject?.trim() || !scriptoriumState.body?.trim()) {
+    if (!scriptoriumState.recipient || !scriptoriumState.recipient.id || !scriptoriumState.subject?.trim() || !scriptoriumState.body?.trim()) {
         alert('Please select a recipient and fill in both subject and body.');
         return;
     }
-
     if (sendButton) sendButton.disabled = true;
-
     try {
-        console.log('App: Attempting to send message:', scriptoriumState);
-        const result = await api.sendMessage(
-            scriptoriumState.recipient.id,
-            scriptoriumState.subject,
-            scriptoriumState.body
-        );
-
+        const result = await api.sendMessage(scriptoriumState.recipient.id, scriptoriumState.subject, scriptoriumState.body);
         if (result.success) {
             alert('Message sent successfully!');
             hideScriptorium();
-            // Optionally, navigate to outbox or refresh cabinet view
             publish('messageSent', { message: result.data });
-
         } else {
             alert(`Failed to send message: ${result.message || 'Unknown error'}`);
             if (sendButton) sendButton.disabled = false;
@@ -93,7 +79,7 @@ async function handleSendMessage() {
 
 // --- Route Rendering Logic ---
 /**
- * Renders the appropriate component into the content area based on the route name and path.
+ * Renders the appropriate component into the content area based on the route path.
  * @param {string} path - The current window.location.pathname.
  */
 function renderRouteByPath(path) {
@@ -102,15 +88,17 @@ function renderRouteByPath(path) {
         return;
     }
     console.log(`App: Rendering route for path: ${path}`);
+    // Close Profile Pane when navigating, unless the navigation is *to* a profile-specific route (none yet)
+    if (getState().isProfilePaneOpen) {
+        setProfilePaneState(false);
+    }
+
     let componentElement = null;
     const currentAppState = getState();
-
-    // Normalize path for safety, though History API should provide it correctly
     const normalizedPath = path.startsWith('/') ? path : '/' + path;
-    const pathSegments = normalizedPath.split('/').filter(Boolean); // e.g., ['', 'message', '123'] -> ['message', '123']
+    const pathSegments = normalizedPath.split('/').filter(Boolean);
     let routeName = pathSegments[0] || (currentAppState.isLoggedIn ? 'home' : 'login');
     let routeParam = pathSegments[1] || null;
-
 
     if (normalizedPath === '/' || normalizedPath === '') {
         routeName = currentAppState.isLoggedIn ? 'home' : 'login';
@@ -120,34 +108,23 @@ function renderRouteByPath(path) {
         }
     }
 
-    // Ensure user is logged in for routes that require it
-    const protectedRoutes = ['home', 'cabinet', 'scriptorium', 'message'];
+    const protectedRoutes = ['home', 'cabinet', 'scriptorium', 'message', 'map']; // Added 'map'
     if (protectedRoutes.includes(routeName) && !currentAppState.isLoggedIn) {
         console.warn(`App: Access to protected route ${normalizedPath} denied. Redirecting to /login.`);
         const loginPath = '/login';
         history.replaceState({ path: loginPath }, '', loginPath);
-        routeName = 'login'; // Force rendering login page
-        routeParam = null; // Clear any params
+        routeName = 'login';
+        routeParam = null;
     }
 
     switch (routeName) {
         case 'login':
-            if (currentAppState.isLoggedIn) {
-                const homePath = '/home';
-                history.replaceState({ path: homePath }, '', homePath);
-                componentElement = HomePageComponent(currentAppState.currentUser);
-            } else {
-                componentElement = LoginPageComponent();
-            }
+            componentElement = currentAppState.isLoggedIn ? HomePageComponent(currentAppState.currentUser) : LoginPageComponent();
+            if (currentAppState.isLoggedIn && window.location.pathname !== '/home') history.replaceState({ path: '/home' }, '', '/home');
             break;
         case 'register':
-            if (currentAppState.isLoggedIn) {
-                const homePath = '/home';
-                history.replaceState({ path: homePath }, '', homePath);
-                componentElement = HomePageComponent(currentAppState.currentUser);
-            } else {
-                componentElement = RegisterPageComponent();
-            }
+            componentElement = currentAppState.isLoggedIn ? HomePageComponent(currentAppState.currentUser) : RegisterPageComponent();
+            if (currentAppState.isLoggedIn && window.location.pathname !== '/home') history.replaceState({ path: '/home' }, '', '/home');
             break;
         case 'home':
             componentElement = HomePageComponent(currentAppState.currentUser);
@@ -155,25 +132,22 @@ function renderRouteByPath(path) {
         case 'cabinet':
             componentElement = CabinetComponent();
             break;
-        case 'message': // New route for message detail
-            if (routeParam) { // Expects an ID, e.g., /message/123
+        case 'message':
+            if (routeParam) {
                 componentElement = MessageDetailComponent(routeParam);
             } else {
                 console.warn(`App: Missing message ID for /message route. Redirecting to /cabinet.`);
-                const cabinetPath = '/cabinet';
-                history.replaceState({ path: cabinetPath }, '', cabinetPath);
-                componentElement = CabinetComponent(); // Or a specific error component
+                history.replaceState({ path: '/cabinet' }, '', '/cabinet');
+                componentElement = CabinetComponent();
             }
             break;
+        // Note: MapComponent is currently part of HomePage, not a separate route.
+        // If you want a dedicated /map route later, you'd add a case here.
         default:
             console.warn(`Unknown route: ${routeName} from path ${normalizedPath}. Rendering 404-like content.`);
             componentElement = document.createElement('div');
             componentElement.className = 'p-6';
-            componentElement.innerHTML = `
-                <h2 class="text-2xl font-semibold text-red-600 mb-4">404 - Page Not Found</h2>
-                <p class="text-gray-700 dark:text-gray-300">Sorry, the page you requested (${normalizedPath}) does not exist.</p>
-                <a href="/home" data-route="home" class="mt-4 inline-block text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Return to Home</a>
-            `;
+            componentElement.innerHTML = `<h2 class="text-2xl font-semibold text-red-600 mb-4">404 - Page Not Found</h2><p>Sorry, the page you requested (${normalizedPath}) does not exist.</p><a href="/home" data-route="home" class="mt-4 inline-block text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Return to Home</a>`;
     }
 
     if (componentElement) {
@@ -191,7 +165,22 @@ function handleGlobalClick(event) {
     const target = event.target;
     const currentScriptoriumState = getState('scriptorium');
 
-    // Scriptorium specific actions
+    // Profile Pane Crest Click
+    if (target.closest('#profile-crest-button')) {
+        event.preventDefault();
+        setProfilePaneState(!getState().isProfilePaneOpen); // Toggle pane
+        return;
+    }
+
+    // Click on Profile Pane Backdrop to close
+    if (target.matches('#profile-pane-backdrop')) {
+        event.preventDefault();
+        setProfilePaneState(false);
+        return;
+    }
+    // Note: ProfilePaneComponent's internal close button calls setProfilePaneState(false) directly.
+
+    // Scriptorium specific actions (check if it's open first)
     if (currentScriptoriumState && currentScriptoriumState.isOpen) {
         if (target.closest('[data-action="close-scriptorium"]')) {
             event.preventDefault();
@@ -202,9 +191,8 @@ function handleGlobalClick(event) {
             event.preventDefault();
             const selectRecipientButton = target.closest('[data-action="select-recipient"]');
             const userId = parseInt(selectRecipientButton.dataset.userId, 10);
-            const username = selectRecipientButton.textContent; // Or a data attribute for username
+            const username = selectRecipientButton.textContent;
             setScriptoriumState({ recipient: { id: userId, username: username } });
-            console.log(`App: Selected recipient set in state: ${username} (ID: ${userId})`);
             return;
         }
         if (target.closest('[data-action="send-message"]')) {
@@ -214,7 +202,7 @@ function handleGlobalClick(event) {
         }
     }
 
-    // Generic navigation links (data-route)
+    // Generic navigation links
     const targetLink = target.closest('a[data-route]');
     if (targetLink) {
         event.preventDefault();
@@ -227,33 +215,24 @@ function handleGlobalClick(event) {
     }
 
     // Specific button actions
-    const logoutButton = target.closest('#logout-button');
-    if (logoutButton) {
+    if (target.closest('#logout-button')) { // For main navbar logout
         event.preventDefault();
         handleLogout();
         return;
     }
-
-    const showScriptoriumButton = target.closest('#show-scriptorium-button');
-    if (showScriptoriumButton) {
+    if (target.closest('#show-scriptorium-button')) {
         event.preventDefault();
         showScriptorium();
         return;
     }
-
-    // Handle clicks on message items within CabinetComponent
-    // This requires CabinetComponent to add a `data-action="view-message"` and `data-message-id`
     const messageItemLink = target.closest('[data-action="view-message"]');
     if (messageItemLink) {
         event.preventDefault();
         const messageId = messageItemLink.dataset.messageId;
         if (messageId) {
             const path = `/message/${messageId}`;
-            console.log(`App: Navigating to message detail: ${path}`);
             history.pushState({ path: path }, '', path);
             renderRouteByPath(path);
-        } else {
-            console.warn('App: Clicked view-message action but messageId is missing.');
         }
         return;
     }
@@ -268,7 +247,9 @@ async function handleLogout() {
         const result = await api.logoutUser();
         if (result.success) {
             setAuthState(false, null);
+            // Close any open overlays/panes on logout
             setScriptoriumState({ isOpen: false, recipient: null, subject: '', body: '' });
+            setProfilePaneState(false);
             const loginPath = '/login';
             history.pushState({ path: loginPath }, '', loginPath);
             renderRouteByPath(loginPath);
@@ -303,7 +284,7 @@ async function handleAuthFormSubmit(event) {
         if (form.id === 'login-form') {
             result = await api.loginUser(data.email, data.password);
             if (result.success) {
-                setAuthState(true, result.user);
+                setAuthState(true, result.user); // setAuthState now handles user data including location
                 nextPath = '/home';
             } else { throw new Error(result.message || 'Login failed'); }
         } else if (form.id === 'register-form') {
@@ -341,9 +322,7 @@ function handlePopstate(event) {
     if (event.state && event.state.path) {
         path = event.state.path;
     } else {
-        // Fallback if state is null or path is missing (e.g. initial load or external navigation)
         path = window.location.pathname;
-        // Ensure state object is consistent even if it was initially null
         history.replaceState({ path: path }, '', path);
     }
     renderRouteByPath(path);
@@ -355,46 +334,42 @@ function handlePopstate(event) {
  */
 async function initializeApp() {
     console.log('App: Initializing...');
-
     bodyElement.addEventListener('click', handleGlobalClick);
-
     if (contentElement) {
-        contentElement.addEventListener('submit', handleAuthFormSubmit); // For login/register forms
+        contentElement.addEventListener('submit', handleAuthFormSubmit);
     } else {
         console.error("FATAL ERROR: #content element not found! Auth forms may not work.");
     }
-
     window.addEventListener('popstate', handlePopstate);
 
-    // Subscribe to navigateToRoute events (e.g., from MessageDetailComponent's "Back" button)
     subscribe('navigateToRoute', (data) => {
         if (data && data.routeName) {
-            const path = `/${data.routeName}`; // Assuming simple route names for now
+            const path = `/${data.routeName}`;
             if (path !== window.location.pathname) {
                 history.pushState({ path: path }, '', path);
             }
             renderRouteByPath(path);
         }
     });
+    subscribe('requestLogout', handleLogout); // Listen for logout requests (e.g., from ProfilePane)
+
 
     try {
         const authStatus = await api.checkAuthStatus();
+        // authStatus.user now contains .location if available
         setAuthState(authStatus.isLoggedIn, authStatus.user || null);
     } catch (error) {
         console.error("App: Failed to fetch initial auth status:", error);
-        setAuthState(false, null); // Assume logged out on error
+        setAuthState(false, null);
     }
 
-    // Ensure scriptorium state is initialized
     setScriptoriumState({ isOpen: false, recipient: null, subject: '', body: '' });
+    setProfilePaneState(false); // Ensure profile pane is closed on init
 
-    // Initial route rendering based on current URL path
     const initialPath = window.location.pathname;
-    history.replaceState({ path: initialPath }, '', initialPath); // Ensure initial state has path
+    history.replaceState({ path: initialPath }, '', initialPath);
     renderRouteByPath(initialPath);
-
     console.log("App: Initialization complete.");
 }
 
-// Wait for the DOM to be fully loaded before initializing the app
 document.addEventListener('DOMContentLoaded', initializeApp);

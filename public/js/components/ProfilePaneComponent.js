@@ -3,7 +3,7 @@
  * Defines the Profile Pane component.
  */
 import { getState, setProfilePaneState } from '../state.js';
-import { publish } from '../pubsub.js'; // For logout or other actions
+import {publish, subscribe} from '../pubsub.js'; // For logout or other actions
 
 /**
  * Formats a JavaScript Date object or a date string into a more readable format.

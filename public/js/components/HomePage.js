@@ -2,12 +2,54 @@
  * public/js/components/HomePage.js
  * Defines the HomePage component function.
  */
-import { MapComponent } from './MapComponent.js'; // Import the MapComponent
+import { MapComponent } from './MapComponent.js';
+import { ProfilePaneComponent } from './ProfilePaneComponent.js'; // Import ProfilePaneComponent
+import { getState } from '../state.js'; // To potentially show/hide crest based on login
 
 export function HomePageComponent(user) {
     const container = document.createElement('div');
     container.id = 'component-home';
-    container.className = 'space-y-8'; // Add some spacing between sections
+    container.className = 'space-y-8 relative'; // Added 'relative' for potential absolute positioning of crest
+
+    const appState = getState(); // Get current app state
+
+    // --- Profile Crest ---
+    // Only add the crest if the user is logged in.
+    // The Profile Pane itself will handle not showing data if somehow opened when not logged in.
+    if (appState.isLoggedIn) {
+        const profileCrest = document.createElement('div');
+        profileCrest.id = 'profile-crest-button';
+        profileCrest.className = `
+            fixed top-20 left-4 z-30 p-2 bg-stone-600 dark:bg-stone-700 
+            text-white rounded-full shadow-lg cursor-pointer
+            hover:bg-yellow-600 dark:hover:bg-yellow-500
+            transition-colors duration-200
+        `; // top-20 to be below navbar, left-4 for offset
+        profileCrest.title = 'View Profile'; // Tooltip
+
+        // Placeholder Shield Icon (SVG)
+        profileCrest.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 md:w-8 md:h-8">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+        `;
+        // Add slight glow on hover via CSS (can be done in output.css or inline if simple)
+        // For now, Tailwind hover:bg-yellow-600 handles visual feedback.
+        // A 'glow' might be: hover:shadow-yellow-500/50 or custom CSS.
+        container.appendChild(profileCrest); // Append crest to the main home container
+        // Using 'fixed' will position it relative to viewport.
+    }
+
+
+    // --- Profile Pane ---
+    // Instantiate and append the ProfilePaneComponent (it will be hidden by default via its own CSS)
+    // It should only be added once. If HomePageComponent can re-render, ensure this isn't added multiple times.
+    // A simple check:
+    if (appState.isLoggedIn && !document.getElementById('profile-pane')) {
+        const profilePaneElement = ProfilePaneComponent();
+        document.body.appendChild(profilePaneElement); // Append to body to ensure it can overlay everything
+    }
+
 
     const username = user?.username || 'Esteemed Guest';
 
@@ -44,8 +86,6 @@ export function HomePageComponent(user) {
     mapHeader.textContent = 'A Window to the Realm';
     mapSection.appendChild(mapHeader);
 
-    // Create and append the MapComponent
-    // Pass the static dimensions here
     const mapElement = MapComponent({ initialWidth: 800, initialHeight: 600 });
     mapSection.appendChild(mapElement);
     container.appendChild(mapSection);

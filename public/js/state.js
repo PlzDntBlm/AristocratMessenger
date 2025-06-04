@@ -73,4 +73,4 @@ function getState(sliceKey = null) {
     return JSON.parse(JSON.stringify(appState));
 }
 
-export { getState, setAuthState, setScriptoriumState };
+export { getState, setAuthState, setScriptoriumState, setProfilePaneState };
