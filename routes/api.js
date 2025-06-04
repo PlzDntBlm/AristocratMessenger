@@ -10,18 +10,48 @@ const { Op } = require('sequelize'); // For OR queries
 
 /**
  * GET /api/auth/status
- * Checks the current session and returns the user's login status.
+ * Checks the current session and returns the user's login status,
+ * including their basic info and location if available.
  */
-router.get('/auth/status', (req, res) => {
+router.get('/auth/status', async (req, res) => { // Made async
     if (req.session && req.session.userId) {
-        // User is logged in
-        res.json({
-            isLoggedIn: true,
-            user: {
-                id: req.session.userId,
-                username: req.session.username
+        try {
+            const user = await User.findByPk(req.session.userId, {
+                attributes: ['id', 'username', 'email', 'createdAt'], // Add email and createdAt
+                include: [{
+                    model: Location,
+                    as: 'location', // Defined in User.associate
+                    attributes: ['name', 'x', 'y', 'type', 'description'] // Specify attributes you want
+                }]
+            });
+
+            if (!user) {
+                // Should not happen if session.userId is valid, but good practice
+                return res.json({ isLoggedIn: false });
             }
-        });
+
+            // Ensure currentUser data structure matches what frontend expects
+            const currentUserData = {
+                id: user.id,
+                username: user.username,
+                email: user.email, // Add email
+                createdAt: user.createdAt, // Add createdAt
+                location: user.location || null // user.location will be the Location object or null
+            };
+
+            res.json({
+                isLoggedIn: true,
+                user: currentUserData
+            });
+        } catch (error) {
+            console.error('Error fetching user auth status with location:', error);
+            // Fallback for error, send basic logged-in status without full user data
+            res.status(500).json({
+                isLoggedIn: true, // Still logged in, but data retrieval failed
+                user: { id: req.session.userId, username: req.session.username }, // Basic info
+                error: 'Failed to retrieve full user details.'
+            });
+        }
     } else {
         // User is not logged in
         res.json({ isLoggedIn: false });

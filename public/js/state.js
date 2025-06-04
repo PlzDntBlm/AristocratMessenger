@@ -13,6 +13,7 @@ const appState = {
         subject: '',     // For future use
         body: '',        // For future use
     },
+    isProfilePaneOpen: false, // State for profile panel visibility
 };
 
 function setAuthState(loggedInStatus, userData = null) {
@@ -46,6 +47,18 @@ function setScriptoriumState(newScriptoriumPartialState) {
     if (changed) {
         console.log('State updated (Scriptorium):', { ...appState.scriptorium });
         publish('scriptoriumStateChanged', { ...appState.scriptorium });
+    }
+}
+
+/**
+ * Sets the visibility state of the Profile Pane.
+ * @param {boolean} isOpen - Whether the profile pane should be open.
+ */
+function setProfilePaneState(isOpen) {
+    if (appState.isProfilePaneOpen !== isOpen) {
+        appState.isProfilePaneOpen = isOpen;
+        console.log('State updated (Profile Pane):', { isOpen: appState.isProfilePaneOpen });
+        publish('profilePaneStateChanged', { isOpen: appState.isProfilePaneOpen });
     }
 }
 
