@@ -37,7 +37,6 @@
     --color-gray-500: oklch(55.1% 0.027 264.364);
     --color-gray-600: oklch(44.6% 0.03 256.802);
     --color-gray-700: oklch(37.3% 0.034 259.733);
-    --color-gray-800: oklch(27.8% 0.033 256.848);
     --color-stone-50: oklch(98.5% 0.001 106.423);
     --color-stone-100: oklch(97% 0.001 106.424);
     --color-stone-200: oklch(92.3% 0.003 48.717);
@@ -243,6 +242,9 @@
   .z-40 {
     z-index: 40;
   }
+  .z-1000 {
+    z-index: 1000;
+  }
   .container {
     width: 100%;
     @media (width >= 40rem) {
@@ -407,13 +409,6 @@
   }
   .gap-x-4 {
     column-gap: calc(var(--spacing) * 4);
-  }
-  .space-x-4 {
-    :where(& > :not(:last-child)) {
-      --tw-space-x-reverse: 0;
-      margin-inline-start: calc(calc(var(--spacing) * 4) * var(--tw-space-x-reverse));
-      margin-inline-end: calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-x-reverse)));
-    }
   }
   .gap-y-2 {
     row-gap: calc(var(--spacing) * 2);
@@ -627,9 +622,6 @@
   }
   .text-gray-700 {
     color: var(--color-gray-700);
-  }
-  .text-gray-800 {
-    color: var(--color-gray-800);
   }
   .text-green-500 {
     color: var(--color-green-500);
@@ -999,11 +991,6 @@
   inherits: false;
   initial-value: 0;
 }
-@property --tw-space-x-reverse {
-  syntax: "*";
-  inherits: false;
-  initial-value: 0;
-}
 @property --tw-border-style {
   syntax: "*";
   inherits: false;
@@ -1094,7 +1081,6 @@
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
       --tw-space-y-reverse: 0;
-      --tw-space-x-reverse: 0;
       --tw-border-style: solid;
       --tw-leading: initial;
       --tw-font-weight: initial;

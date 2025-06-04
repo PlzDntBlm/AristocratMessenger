@@ -9,7 +9,7 @@ import { subscribe } from '../pubsub.js';
 export function ScriptoriumComponent() {
     const overlay = document.createElement('div');
     overlay.id = 'scriptorium-overlay';
-    overlay.className = 'fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4 hidden';
+    overlay.className = 'fixed inset-0 bg-black/60 z-1000 flex items-center justify-center p-4 hidden';
 
     const panel = document.createElement('div');
     panel.id = 'scriptorium-panel';
