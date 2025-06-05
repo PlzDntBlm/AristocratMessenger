@@ -4,7 +4,7 @@
  */
 const express = require('express');
 const bcrypt = require('bcrypt');
-const { User } = require('../models');
+const { User, Location } = require('../models');
 const router = express.Router();
 const saltRounds = 10;
 
@@ -44,21 +44,41 @@ router.post('/login', async (req, res) => {
         return res.status(400).json({ success: false, message: "Email and password are required." });
     }
     try {
-        const user = await User.findOne({ where: { email: email } });
+        const user = await User.findOne({
+            where: { email: email },
+            include: [{ // Include location data on login
+                model: Location,
+                as: 'location',
+                attributes: ['name', 'x', 'y', 'type', 'description']
+            }],
+            // Also fetch attributes needed for the profile pane that might not be in the session
+            attributes: ['id', 'username', 'email', 'createdAt', 'password'] // Include password for bcrypt.compare
+        });
+
         if (!user) {
             console.log(`Login attempt failed: User not found for email ${email}`);
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
+
         const match = await bcrypt.compare(password, user.password);
         if (match) {
             console.log(`Login successful for user: ${user.username} (${user.email})`);
             req.session.userId = user.id;
-            req.session.username = user.username;
-            // Return JSON success with user info (excluding password)
+            req.session.username = user.username; // Keep session lean, full object in response
+
+            // Construct the user object for the response, excluding password
+            const userResponseData = {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                createdAt: user.createdAt,
+                location: user.location || null
+            };
+
             res.status(200).json({
                 success: true,
                 message: `Login successful for ${user.username}!`,
-                user: { id: user.id, username: user.username } // Send back basic user info
+                user: userResponseData // Send back detailed user info
             });
         } else {
             console.log(`Login attempt failed: Incorrect password for email ${email}`);
