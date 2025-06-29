@@ -4,7 +4,7 @@
  * manages interaction between state, api, and component rendering.
  */
 import * as api from './api.js';
-import { getState, setAuthState, setScriptoriumState, setProfilePaneState } from './state.js'; // Import setProfilePaneState
+import { getState, setAuthState, setScriptoriumState, setProfilePaneState } from './state.js';
 import { renderContent, renderNavbar } from './ui.js';
 import { LoginPageComponent } from './components/LoginPage.js';
 import { RegisterPageComponent } from './components/RegisterPage.js';
@@ -12,7 +12,6 @@ import { HomePageComponent } from './components/HomePage.js';
 import { ScriptoriumComponent } from './components/ScriptoriumComponent.js';
 import { CabinetComponent } from './components/CabinetComponent.js';
 import { MessageDetailComponent } from './components/MessageDetailComponent.js';
-// ProfilePaneComponent is instantiated by HomePageComponent and added to body, not directly routed for now.
 import { subscribe, publish } from './pubsub.js';
 
 
@@ -21,16 +20,13 @@ const contentElement = document.getElementById('content');
 const bodyElement = document.body;
 
 // --- Scriptorium Management ---
+// Scriptorium is a global overlay. We'll instantiate it once on app load.
 let scriptoriumElement = null; // Scriptorium is an overlay, managed here
 
 /**
  * Updates the Scriptorium state to open and resets its fields.
  */
 function showScriptorium() {
-    if (!scriptoriumElement) {
-        scriptoriumElement = ScriptoriumComponent();
-        bodyElement.appendChild(scriptoriumElement);
-    }
     setScriptoriumState({
         isOpen: true,
         recipient: null,
@@ -341,6 +337,13 @@ async function initializeApp() {
         console.error("FATAL ERROR: #content element not found! Auth forms may not work.");
     }
     window.addEventListener('popstate', handlePopstate);
+
+    // --- Create global overlay components ---
+    // The Scriptorium is instantiated once and appended to the body.
+    // Its visibility is controlled entirely by its subscription to 'scriptoriumStateChanged'.
+    scriptoriumElement = ScriptoriumComponent(); // <<< MOVED HERE
+    bodyElement.appendChild(scriptoriumElement);  // <<< MOVED HERE
+    console.log('App: Scriptorium component initialized and appended to body.');
 
     subscribe('navigateToRoute', (data) => {
         if (data && data.routeName) {
