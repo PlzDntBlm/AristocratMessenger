@@ -1,29 +1,43 @@
 /**
  * middleware/authMiddleware.js
  *
- * Provides middleware functions related to authentication.
+ * Provides middleware for JWT-based authentication.
  */
+const jwt = require('jsonwebtoken');
 
 /**
- * Middleware to check if a user is authenticated via session.
- * If authenticated, proceeds to the next middleware/route handler.
- * If not authenticated, sends a 401 Unauthorized status (suitable for API/fetch requests).
+ * Middleware to verify a JWT from the Authorization header.
+ * If the token is valid, it attaches the decoded user payload to `req.user`.
+ * If the token is missing or invalid, it sends an error response.
  *
  * @param {object} req - Express request object
  * @param {object} res - Express response object
  * @param {function} next - Express next middleware function
  */
 const isAuthenticated = (req, res, next) => {
-    if (req.session && req.session.userId) {
-        // User is authenticated, proceed to the requested route
-        return next();
-    } else {
-        // User is not authenticated
-        // For partial requests (fetch), sending 401 is appropriate.
-        // Client-side JS should handle this 401 by redirecting to login.
-        console.log("Auth Middleware: Access denied (no session).");
-        res.status(401).send("Unauthorized: You must be logged in to access this resource.");
-        // TODO: Consider redirecting for non-fetch requests if routes change later
+    // Check for the token in the Authorization header
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log("Auth Middleware: Access denied (No token provided).");
+        return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
+    }
+
+    // Extract the token from "Bearer <token>"
+    const token = authHeader.split(' ')[1];
+
+    try {
+        // Verify the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        // Attach the decoded payload (e.g., { id, username }) to the request object
+        req.user = decoded;
+
+        // Proceed to the next middleware or route handler
+        next();
+    } catch (error) {
+        console.error("Auth Middleware: Invalid token.", error.message);
+        return res.status(403).json({ success: false, message: 'Invalid token.' });
     }
 };
 

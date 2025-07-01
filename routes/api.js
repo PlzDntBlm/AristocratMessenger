@@ -4,75 +4,54 @@
  */
 const express = require('express');
 const router = express.Router();
-const { User, Message ,Location} = require('../models'); // Import User and Message models
-const { isAuthenticated } = require('../middleware/authMiddleware'); // Import isAuthenticated middleware
-const { Op } = require('sequelize'); // For OR queries
+const { User, Message ,Location} = require('../models');
+const { isAuthenticated } = require('../middleware/authMiddleware');
+const { Op } = require('sequelize');
 
 /**
- * GET /api/auth/status
- * Checks the current session and returns the user's login status,
- * including their basic info and location if available.
+ * GET /api/users/me
+ * Uses the isAuthenticated middleware to verify a token and returns
+ * the full profile information for the authenticated user.
  */
-router.get('/auth/status', async (req, res) => { // Made async
-    if (req.session && req.session.userId) {
-        try {
-            const user = await User.findByPk(req.session.userId, {
-                attributes: ['id', 'username', 'email', 'createdAt'], // Add email and createdAt
-                include: [{
-                    model: Location,
-                    as: 'location', // Defined in User.associate
-                    attributes: ['name', 'x', 'y', 'type', 'description'] // Specify attributes you want
-                }]
-            });
+router.get('/users/me', isAuthenticated, async (req, res) => {
+    try {
+        // The user's id is available from the decoded token via `req.user.id`
+        const user = await User.findByPk(req.user.id, {
+            attributes: ['id', 'username', 'email', 'createdAt'],
+            include: [{
+                model: Location,
+                as: 'location',
+                attributes: ['name', 'x', 'y', 'type', 'description']
+            }]
+        });
 
-            if (!user) {
-                // Should not happen if session.userId is valid, but good practice
-                return res.json({ isLoggedIn: false });
-            }
-
-            // Ensure currentUser data structure matches what frontend expects
-            const currentUserData = {
-                id: user.id,
-                username: user.username,
-                email: user.email, // Add email
-                createdAt: user.createdAt, // Add createdAt
-                location: user.location || null // user.location will be the Location object or null
-            };
-
-            res.json({
-                isLoggedIn: true,
-                user: currentUserData
-            });
-        } catch (error) {
-            console.error('Error fetching user auth status with location:', error);
-            // Fallback for error, send basic logged-in status without full user data
-            res.status(500).json({
-                isLoggedIn: true, // Still logged in, but data retrieval failed
-                user: { id: req.session.userId, username: req.session.username }, // Basic info
-                error: 'Failed to retrieve full user details.'
-            });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
         }
-    } else {
-        // User is not logged in
-        res.json({ isLoggedIn: false });
+
+        res.json({ success: true, user: user });
+
+    } catch (error) {
+        console.error('Error fetching "me" user data:', error);
+        res.status(500).json({ success: false, message: 'Error retrieving user profile.' });
     }
 });
 
 // --- User API Endpoints ---
+// GET /api/users (for contact list) still works, but needs req.user.id for filtering self
 /**
  * GET /api/users
- * Fetches a list of users (id and username).
- * Requires authentication to access the user list for messaging.
+ * Fetches a list of users, excluding the currently authenticated user.
  */
 router.get('/users', isAuthenticated, async (req, res) => {
     try {
         const users = await User.findAll({
-            attributes: ['id', 'username'], // Only select necessary attributes
-            order: [['username', 'ASC']]    // Order alphabetically by username
+            where: {
+                id: { [Op.ne]: req.user.id } // Filter out the current user
+            },
+            attributes: ['id', 'username'],
+            order: [['username', 'ASC']]
         });
-        // Optional: Filter out the current logged-in user from the list
-        // const filteredUsers = users.filter(user => user.id !== req.session.userId);
-        // res.json({ success: true, data: filteredUsers });
         res.json({ success: true, data: users });
     } catch (error) {
         console.error('Error fetching users:', error);
@@ -89,7 +68,7 @@ router.get('/users', isAuthenticated, async (req, res) => {
  */
 router.post('/messages', isAuthenticated, async (req, res) => {
     const { recipientId, subject, body } = req.body;
-    const senderId = req.session.userId;
+    const senderId = req.user.id;
 
     if (!recipientId || !subject || !body) {
         return res.status(400).json({ success: false, message: 'Recipient, subject, and body are required.' });
@@ -129,7 +108,7 @@ router.post('/messages', isAuthenticated, async (req, res) => {
  * Fetches messages received by the logged-in user.
  */
 router.get('/messages/inbox', isAuthenticated, async (req, res) => {
-    const recipientId = req.session.userId;
+    const recipientId = req.user.id;
     try {
         const messages = await Message.findAll({
             where: { recipientId },
@@ -152,7 +131,7 @@ router.get('/messages/inbox', isAuthenticated, async (req, res) => {
  * Fetches messages sent by the logged-in user.
  */
 router.get('/messages/outbox', isAuthenticated, async (req, res) => {
-    const senderId = req.session.userId;
+    const senderId = req.user.id;
     try {
         const messages = await Message.findAll({
             where: { senderId },
@@ -177,7 +156,7 @@ router.get('/messages/outbox', isAuthenticated, async (req, res) => {
  */
 router.get('/messages/:id', isAuthenticated, async (req, res) => {
     const messageId = req.params.id;
-    const userId = req.session.userId;
+    const userId = req.user.id;
 
     try {
         const message = await Message.findByPk(messageId, {
@@ -217,7 +196,7 @@ router.get('/messages/:id', isAuthenticated, async (req, res) => {
  */
 router.put('/messages/:id/read', isAuthenticated, async (req, res) => {
     const messageId = req.params.id;
-    const userId = req.session.userId; // Recipient
+    const userId = req.user.id; // Recipient
 
     try {
         const message = await Message.findByPk(messageId);
@@ -274,7 +253,7 @@ router.get('/locations', isAuthenticated, async (req, res) => {
  */
 router.put('/users/profile', isAuthenticated, async (req, res) => {
     const { username, email } = req.body;
-    const userId = req.session.userId;
+    const userId = req.user.id;
 
     // Basic validation
     if (!username || !email) {
