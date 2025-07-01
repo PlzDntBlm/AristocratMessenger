@@ -8,7 +8,6 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const session = require('express-session'); // Require session
 
 // Import Routers
 const authRouter = require('./routes/auth');
@@ -16,26 +15,6 @@ const apiRouter = require('./routes/api');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// --- Session Configuration ---
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: false, // Set to true if using HTTPS
-        httpOnly: true,
-        maxAge: 1000 * 60 * 60 * 24 // 24 hours
-        // TODO: Consider using a session store
-    }
-}));
-
-// --- Make Session Data Available to Templates ---
-app.use((req, res, next) => {
-    res.locals.isLoggedIn = !!req.session.userId;
-    res.locals.username = req.session.username || null;
-    next();
-});
 
 // --- Other Core Middleware ---
 app.set('view engine', 'ejs');

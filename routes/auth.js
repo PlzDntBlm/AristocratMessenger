@@ -1,9 +1,10 @@
 /**
  * routes/auth.js
- * Handles authentication related routes: registration, login, logout.
+ * Handles JWT-based authentication routes.
  */
 const express = require('express');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken'); // Import jsonwebtoken
 const { User, Location } = require('../models');
 const router = express.Router();
 const saltRounds = 10;
@@ -37,6 +38,7 @@ router.post('/register', async (req, res) => {
 
 /**
  * POST /auth/login
+ * Validates credentials and returns a signed JWT.
  */
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
@@ -46,42 +48,45 @@ router.post('/login', async (req, res) => {
     try {
         const user = await User.findOne({
             where: { email: email },
-            include: [{ // Include location data on login
-                model: Location,
-                as: 'location',
-                attributes: ['name', 'x', 'y', 'type', 'description']
-            }],
-            // Also fetch attributes needed for the profile pane that might not be in the session
-            attributes: ['id', 'username', 'email', 'createdAt', 'password'] // Include password for bcrypt.compare
+            attributes: ['id', 'username', 'email', 'createdAt', 'password']
         });
 
         if (!user) {
-            console.log(`Login attempt failed: User not found for email ${email}`);
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
 
         const match = await bcrypt.compare(password, user.password);
         if (match) {
-            console.log(`Login successful for user: ${user.username} (${user.email})`);
-            req.session.userId = user.id;
-            req.session.username = user.username; // Keep session lean, full object in response
+            // User authenticated, create JWT payload
+            const payload = {
+                id: user.id,
+                username: user.username
+                // Add roles here in the future, e.g., role: user.role
+            };
 
-            // Construct the user object for the response, excluding password
+            // Sign the token
+            const token = jwt.sign(
+                payload,
+                process.env.JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+
+            // Fetch full user data to return to client (for initial state)
             const userResponseData = {
                 id: user.id,
                 username: user.username,
                 email: user.email,
                 createdAt: user.createdAt,
-                location: user.location || null
+                // Location data will now be fetched by the new /api/users/me endpoint
             };
 
             res.status(200).json({
                 success: true,
                 message: `Login successful for ${user.username}!`,
-                user: userResponseData // Send back detailed user info
+                token: token,
+                user: userResponseData
             });
         } else {
-            console.log(`Login attempt failed: Incorrect password for email ${email}`);
             return res.status(401).json({ success: false, message: "Invalid email or password." });
         }
     } catch (error) {
@@ -92,18 +97,14 @@ router.post('/login', async (req, res) => {
 
 /**
  * POST /auth/logout
+ * This route is now effectively handled by the client (deleting the token).
+ * We can keep a server-side logout route for blocklisting tokens in the future,
+ * but for a simple JWT implementation, it's not strictly necessary.
+ * For now, we'll return a success message.
  */
-router.post('/logout', (req, res, next) => {
-    req.session.destroy((err) => {
-        if (err) {
-            console.error("Session destruction error:", err);
-            return res.status(500).json({ success: false, message: "Logout failed." });
-        }
-        res.clearCookie('connect.sid');
-        console.log("User logged out, session destroyed.");
-        // Return JSON success
-        res.status(200).json({ success: true, message: "Logout successful." });
-    });
+router.post('/logout', (req, res) => {
+    console.log("User logged out on client-side.");
+    res.status(200).json({ success: true, message: "Logout successful." });
 });
 
 module.exports = router;
