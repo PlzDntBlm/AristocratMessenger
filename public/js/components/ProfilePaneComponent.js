@@ -1,15 +1,11 @@
 /**
  * public/js/components/ProfilePaneComponent.js
- * Defines the Profile Pane component.
+ * Defines the Profile Pane component with view and edit modes.
  */
-import { getState, setProfilePaneState } from '../state.js';
-import {publish, subscribe} from '../pubsub.js'; // For logout or other actions
+import * as api from '../api.js';
+import { getState, setAuthState, setProfilePaneState } from '../state.js';
+import {publish, subscribe} from '../pubsub.js';
 
-/**
- * Formats a JavaScript Date object or a date string into a more readable format.
- * @param {string|Date|null} dateInput - The date to format.
- * @returns {string} A formatted date string (e.g., "May 11, 2025") or 'N/A'.
- */
 function formatDateForProfile(dateInput) {
     if (!dateInput) return 'N/A';
     try {
@@ -22,115 +18,173 @@ function formatDateForProfile(dateInput) {
     }
 }
 
-/**
- * Creates and returns the Profile Pane DOM element.
- * @returns {HTMLElement} The main div element for the profile pane.
- */
 export function ProfilePaneComponent() {
     const pane = document.createElement('div');
     pane.id = 'profile-pane';
-    pane.className = `
-        fixed top-0 left-0 h-full w-[350px] bg-stone-50 dark:bg-stone-800 
-        shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out
-        flex flex-col z-[1020]
-    `;
+    pane.className = `fixed top-0 left-0 h-full w-[350px] bg-stone-50 dark:bg-stone-800 shadow-2xl z-[1020] transform -translate-x-full transition-transform duration-300 ease-in-out flex flex-col`;
 
+    let isEditing = false;
+    let backdropElement = null;
+
+    // --- Create Static Elements ---
     const paneHeader = document.createElement('div');
     paneHeader.className = 'p-4 border-b border-stone-200 dark:border-stone-700 flex justify-between items-center';
     const paneTitle = document.createElement('h2');
     paneTitle.id = 'profile-pane-title';
     paneTitle.className = 'text-xl font-semibold text-stone-700 dark:text-stone-200';
     paneHeader.appendChild(paneTitle);
-    pane.appendChild(paneHeader);
 
     const closeButtonContainer = document.createElement('div');
-    closeButtonContainer.id = 'profile-pane-close-button'; // Give it an ID for more specific styling/control
-    closeButtonContainer.className = `
-        absolute top-0 -right-[30px] h-[40px] w-[30px] 
-        bg-yellow-600 hover:bg-yellow-700 
-        flex items-center justify-center cursor-pointer
-        rounded-r-md shadow-md opacity-0 transition-opacity duration-300 ease-in-out pointer-events-none 
-    `; // Start hidden (opacity-0, pointer-events-none)
+    closeButtonContainer.id = 'profile-pane-close-button';
+    closeButtonContainer.className = 'absolute top-0 -right-[30px] h-[40px] w-[30px] bg-yellow-600 hover:bg-yellow-700 flex items-center justify-center cursor-pointer rounded-r-md shadow-md opacity-0 transition-opacity duration-300 ease-in-out pointer-events-none';
     closeButtonContainer.title = 'Close Profile';
-    closeButtonContainer.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-5 h-5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-    `;
-    closeButtonContainer.addEventListener('click', () => {
-        setProfilePaneState(false);
-    });
-    pane.appendChild(closeButtonContainer);
+    closeButtonContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="white" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
 
     const paneContent = document.createElement('div');
     paneContent.id = 'profile-pane-content';
     paneContent.className = 'p-4 space-y-4 flex-grow overflow-y-auto';
-    pane.appendChild(paneContent);
 
     const paneFooter = document.createElement('div');
+    paneFooter.id = 'profile-pane-footer';
     paneFooter.className = 'p-4 border-t border-stone-200 dark:border-stone-700 mt-auto';
-    const editProfileButton = document.createElement('button');
-    editProfileButton.id = 'profile-edit-button';
-    editProfileButton.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed';
-    editProfileButton.textContent = 'Edit Profile';
-    editProfileButton.disabled = true;
-    editProfileButton.title = 'Profile editing coming soon!';
-    const logoutButton = document.createElement('button');
-    logoutButton.id = 'profile-logout-button';
-    logoutButton.className = 'w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-3 focus:outline-none focus:ring-2 focus:ring-red-400';
-    logoutButton.textContent = 'Logout';
-    logoutButton.addEventListener('click', () => {
-        publish('requestLogout');
-    });
-    paneFooter.appendChild(editProfileButton);
-    paneFooter.appendChild(logoutButton);
+
+    // Append static parts
+    pane.appendChild(closeButtonContainer);
+    pane.appendChild(paneHeader);
+    pane.appendChild(paneContent);
     pane.appendChild(paneFooter);
 
-    function populateProfileData() {
-        const appState = getState();
-        const currentUser = appState.currentUser;
+    /**
+     * Toggles the pane between view and edit modes.
+     * @param {boolean} editing - True to enter edit mode, false to enter view mode.
+     */
+    function toggleEditMode(editing) {
+        isEditing = editing;
+        if (isEditing) {
+            renderEditView();
+        } else {
+            renderViewMode();
+        }
+    }
 
-        // Added check: If currentUser is null (e.g. not logged in or data not ready), show loading/default.
-        if (!currentUser || !currentUser.id) { // Check for currentUser.id to ensure it's a populated user object
-            paneTitle.textContent = 'Profile';
-            paneContent.innerHTML = '<p class="text-stone-500 dark:text-stone-400 p-4">Loading user data or not logged in...</p>';
-            // Consider disabling buttons if no user
-            editProfileButton.disabled = true;
-            logoutButton.disabled = true; // Or hide logout if not logged in
+    /**
+     * Renders the standard read-only view of the profile.
+     */
+    function renderViewMode() {
+        const currentUser = getState().currentUser;
+        paneFooter.innerHTML = ''; // Clear footer
+
+        const editProfileButton = document.createElement('button');
+        editProfileButton.textContent = 'Edit Profile';
+        editProfileButton.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50';
+        editProfileButton.disabled = !currentUser; // Disable if no user
+        editProfileButton.onclick = () => toggleEditMode(true);
+
+        const logoutButton = document.createElement('button');
+        logoutButton.textContent = 'Logout';
+        logoutButton.className = 'w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-3 focus:outline-none focus:ring-2 focus:ring-red-400';
+        logoutButton.onclick = () => publish('requestLogout');
+
+        paneFooter.appendChild(editProfileButton);
+        paneFooter.appendChild(logoutButton);
+
+        populateProfileData(); // Repopulate the main content area
+    }
+
+    /**
+     * Renders the profile content as an editable form.
+     */
+    function renderEditView() {
+        const currentUser = getState().currentUser;
+        if (!currentUser) return; // Should not happen if edit button is clicked correctly
+
+        paneContent.innerHTML = `
+            <div id="profile-edit-error" class="text-red-500 text-sm mb-2"></div>
+            <div>
+                <label for="profile-edit-username" class="block text-sm font-medium text-stone-600 dark:text-stone-400">Username</label>
+                <input type="text" id="profile-edit-username" value="${currentUser.username}" class="mt-1 block w-full p-2 border border-stone-300 rounded dark:bg-stone-600 dark:border-stone-500 dark:text-gray-200 focus:ring-yellow-500 focus:border-yellow-500">
+            </div>
+            <div>
+                <label for="profile-edit-email" class="block text-sm font-medium text-stone-600 dark:text-stone-400">Email</label>
+                <input type="email" id="profile-edit-email" value="${currentUser.email}" class="mt-1 block w-full p-2 border border-stone-300 rounded dark:bg-stone-600 dark:border-stone-500 dark:text-gray-200 focus:ring-yellow-500 focus:border-yellow-500">
+            </div>
+            <p class="text-xs text-stone-400 dark:text-stone-500">Location and password can be changed on the full profile page (coming soon).</p>
+        `;
+
+        paneFooter.innerHTML = ''; // Clear footer
+
+        const saveButton = document.createElement('button');
+        saveButton.textContent = 'Save Changes';
+        saveButton.className = 'w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-400';
+        saveButton.onclick = handleSaveChanges;
+
+        const cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Cancel';
+        cancelButton.className = 'w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mt-3 focus:outline-none focus:ring-2 focus:ring-gray-400';
+        cancelButton.onclick = () => toggleEditMode(false);
+
+        paneFooter.appendChild(saveButton);
+        paneFooter.appendChild(cancelButton);
+    }
+
+    /**
+     * Handles the logic for saving profile changes.
+     */
+    async function handleSaveChanges() {
+        const usernameInput = pane.querySelector('#profile-edit-username');
+        const emailInput = pane.querySelector('#profile-edit-email');
+        const errorDiv = pane.querySelector('#profile-edit-error');
+        const saveButton = paneFooter.querySelector('button');
+
+        const updatedData = {
+            username: usernameInput.value.trim(),
+            email: emailInput.value.trim(),
+        };
+
+        if (!updatedData.username || !updatedData.email) {
+            errorDiv.textContent = 'Username and email cannot be empty.';
             return;
         }
 
-        // Re-enable buttons if they were disabled
-        // editProfileButton.disabled = true; // Still keep edit disabled per MVP
-        logoutButton.disabled = false;
+        errorDiv.textContent = '';
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving...';
 
+        try {
+            const result = await api.updateUserProfile(updatedData);
+            if (result.success) {
+                setAuthState(true, result.user); // Update global state with new user object
+                toggleEditMode(false); // Switch back to view mode
+            } else {
+                throw new Error(result.message || 'Failed to save changes.');
+            }
+        } catch (error) {
+            errorDiv.textContent = error.message;
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+        }
+    }
 
-        let titleText = currentUser.username;
-        if (currentUser.location && currentUser.location.name) {
-            paneTitle.textContent = `${currentUser.username} of ${currentUser.location.name}`;
-        } else {
-            paneTitle.textContent = `${currentUser.username}'s Profile`;
+    /**
+     * Populates the profile pane's content area with user data (view mode).
+     */
+    function populateProfileData() {
+        const currentUser = getState().currentUser;
+        if (!currentUser || !currentUser.id) {
+            paneTitle.textContent = 'Profile';
+            paneContent.innerHTML = '<p class="text-stone-500 dark:text-stone-400 p-4">Not currently logged in.</p>';
+            return;
         }
 
+        paneTitle.textContent = currentUser.location ? `${currentUser.username} of ${currentUser.location.name}` : `${currentUser.username}'s Profile`;
         paneContent.innerHTML = `
             <div class="mb-3">
-                <h3 class="text-lg font-semibold text-stone-700 dark:text-stone-300">${currentUser.username || 'N/A'}</h3>
-                <p class="text-sm text-stone-500 dark:text-stone-400">${currentUser.email || 'N/A'}</p>
+                <h3 class="text-lg font-semibold text-stone-700 dark:text-stone-300">${currentUser.username}</h3>
+                <p class="text-sm text-stone-500 dark:text-stone-400">${currentUser.email}</p>
             </div>
             <div>
                 <h4 class="text-md font-medium text-stone-600 dark:text-stone-400">Location:</h4>
-                ${currentUser.location ? `
-                    <p class="text-sm text-stone-500 dark:text-stone-400">
-                        ${currentUser.location.name || 'Not Set'} 
-                        (Type: ${currentUser.location.type || 'N/A'})
-                    </p>
-                    <p class="text-xs text-stone-400 dark:text-stone-500">
-                        Coordinates: X: ${currentUser.location.x !== undefined ? currentUser.location.x : 'N/A'}, Y: ${currentUser.location.y !== undefined ? currentUser.location.y : 'N/A'}
-                    </p>
-                    ${currentUser.location.description ? `<p class="mt-1 text-xs italic text-stone-500 dark:text-stone-400">"${currentUser.location.description}"</p>` : ''}
-                ` : `
-                    <p class="text-sm text-stone-500 dark:text-stone-400">No location set.</p>
-                `}
+                ${currentUser.location ? `<p class="text-sm text-stone-500 dark:text-stone-400">${currentUser.location.name || 'Not Set'}</p>` : `<p class="text-sm text-stone-500 dark:text-stone-400">No location set.</p>`}
             </div>
             <div>
                 <h4 class="text-md font-medium text-stone-600 dark:text-stone-400">Member Since:</h4>
@@ -139,83 +193,38 @@ export function ProfilePaneComponent() {
         `;
     }
 
-    let backdropElement = null;
+    // --- Visibility and State Subscription Logic ---
+    closeButtonContainer.addEventListener('click', () => setProfilePaneState(false));
 
     function setVisibility(isOpen) {
         if (isOpen) {
-            // Crucial: Ensure data is populated ONLY if user is actually logged in.
-            // getState() is called here, so it uses the current state.
-            const loggedInUser = getState().currentUser;
-            if (loggedInUser && loggedInUser.id) {
-                populateProfileData();
-            } else {
-                // If trying to open but no valid user, show a generic state or prevent opening.
-                // For now, populateProfileData handles the "no user" display.
-                populateProfileData();
-            }
-
+            toggleEditMode(false); // Always open in view mode
             pane.classList.remove('-translate-x-full');
-            pane.classList.add('translate-x-0');
-            closeButtonContainer.classList.remove('opacity-0', 'pointer-events-none'); // Show close button
-            closeButtonContainer.classList.add('opacity-100', 'pointer-events-auto');
-
-
             if (!backdropElement) {
                 backdropElement = document.createElement('div');
                 backdropElement.id = 'profile-pane-backdrop';
                 backdropElement.className = 'fixed inset-0 bg-black/50 opacity-0 transition-opacity duration-300 ease-in-out z-[1010]';
                 backdropElement.addEventListener('click', () => setProfilePaneState(false));
                 document.body.appendChild(backdropElement);
-                requestAnimationFrame(() => {
-                    backdropElement.classList.add('opacity-100');
-                });
-            } else {
-                backdropElement.style.display = 'block';
-                requestAnimationFrame(() => {
-                    backdropElement.classList.add('opacity-100');
-                });
             }
+            backdropElement.style.display = 'block';
+            requestAnimationFrame(() => backdropElement.classList.add('opacity-100'));
         } else {
             pane.classList.add('-translate-x-full');
-            pane.classList.remove('translate-x-0');
-            closeButtonContainer.classList.add('opacity-0', 'pointer-events-none'); // Hide close button
-            closeButtonContainer.classList.remove('opacity-100', 'pointer-events-auto');
-
-
             if (backdropElement) {
                 backdropElement.classList.remove('opacity-100');
-                setTimeout(() => {
-                    if (backdropElement && !getState().isProfilePaneOpen) { // Check state again before hiding
-                        backdropElement.style.display = 'none';
-                    }
-                }, 300);
+                setTimeout(() => { if (backdropElement) backdropElement.style.display = 'none'; }, 300);
             }
         }
+        // Toggle close button visibility along with the pane
+        closeButtonContainer.classList.toggle('opacity-0', !isOpen);
+        closeButtonContainer.classList.toggle('pointer-events-none', !isOpen);
     }
 
-    // Ensure initial state respects whether user is logged in for data population.
-    // This call on component creation helps if the component is added to DOM while user is already logged in.
-    populateProfileData();
+    subscribe('profilePaneStateChanged', (data) => setVisibility(data.isOpen));
+    subscribe('authStateChanged', () => { if (!isEditing) { populateProfileData(); } });
 
-
-    const unsubscribeProfilePaneState = subscribe('profilePaneStateChanged', (data) => {
-        setVisibility(data.isOpen);
-    });
-
-    const unsubscribeAuthState = subscribe('authStateChanged', (authData) => {
-        // If pane is currently open or is told to open, and auth state changes, re-populate.
-        // Or, if user logs out while pane is open, content should reflect that.
-        if (getState().isProfilePaneOpen || (authData && !authData.isLoggedIn)) {
-            populateProfileData();
-        }
-        // If user logs out, ensure pane is closed if it isn't already being handled
-        if (!authData.isLoggedIn && getState().isProfilePaneOpen) {
-            setProfilePaneState(false);
-        }
-    });
-
-    // Call setVisibility on creation to set initial hidden state correctly, including for close button.
-    // This is important if the initial state for isProfilePaneOpen could somehow be true.
+    renderViewMode(); // Set initial content to view mode
     setVisibility(getState().isProfilePaneOpen);
 
     return pane;
