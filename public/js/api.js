@@ -63,6 +63,37 @@ async function postData(url = '', data = {}) {
     }
 }
 
+async function putData(url = '', data = {}) {
+    try {
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) {
+            let errorMsg = `HTTP error! status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.message || errorMsg;
+            } catch (e) { /* Ignore */ }
+            const error = new Error(errorMsg);
+            error.status = response.status;
+            throw error;
+        }
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            return response.json();
+        } else {
+            return { success: true, data: await response.text() };
+        }
+    } catch (error) {
+        console.error(`API PUT error for ${url}:`, error);
+        throw error;
+    }
+}
+
 
 /**
  * Checks the user's current authentication status with the server.
@@ -165,6 +196,16 @@ async function getLocations() {
     return await getData('/api/locations');
 }
 
+/**
+ * Updates the current user's profile information.
+ * @param {object} profileData - The data to update, e.g., { username, email }.
+ * @returns {Promise<object>} - Promise resolving to the server's JSON response.
+ */
+async function updateUserProfile(profileData) {
+    console.log('API: Updating user profile...');
+    return await putData('/api/users/profile', profileData);
+}
+
 export {
     postData,
     getData,
@@ -177,5 +218,6 @@ export {
     getInboxMessages,
     getOutboxMessages,
     getMessageById,
-    getLocations
+    getLocations,
+    updateUserProfile
 };

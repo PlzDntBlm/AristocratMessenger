@@ -268,5 +268,67 @@ router.get('/locations', isAuthenticated, async (req, res) => {
     }
 });
 
+/**
+ * PUT /api/users/profile
+ * Allows a logged-in user to update their own profile (username, email).
+ */
+router.put('/users/profile', isAuthenticated, async (req, res) => {
+    const { username, email } = req.body;
+    const userId = req.session.userId;
+
+    // Basic validation
+    if (!username || !email) {
+        return res.status(400).json({ success: false, message: 'Username and email are required.' });
+    }
+
+    try {
+        // Check if the new email is already taken by ANOTHER user
+        const existingEmailUser = await User.findOne({
+            where: {
+                email: email,
+                id: { [Op.ne]: userId } // Op.ne means "not equal to"
+            }
+        });
+
+        if (existingEmailUser) {
+            return res.status(409).json({ success: false, message: 'This email is already in use by another account.' });
+        }
+
+        const user = await User.findByPk(userId);
+        if (!user) {
+            // This case should be rare if isAuthenticated middleware is working
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        // Update user fields
+        user.username = username;
+        user.email = email;
+        await user.save();
+
+        // Update session username in case it changed
+        req.session.username = user.username;
+
+        // Fetch the full updated user profile to send back, including location
+        const updatedUser = await User.findByPk(userId, {
+            attributes: ['id', 'username', 'email', 'createdAt'],
+            include: [{
+                model: Location,
+                as: 'location',
+                attributes: ['name', 'x', 'y', 'type', 'description']
+            }]
+        });
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully!',
+            user: updatedUser
+        });
+
+    } catch (error) {
+        console.error('Error updating user profile:', error);
+        res.status(500).json({ success: false, message: 'An error occurred while updating your profile.' });
+    }
+});
+
 
 module.exports = router;
