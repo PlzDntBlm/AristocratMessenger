@@ -32,7 +32,7 @@ export function ProfilePaneComponent() {
     pane.className = `
         fixed top-0 left-0 h-full w-[350px] bg-stone-50 dark:bg-stone-800 
         shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 ease-in-out
-        flex flex-col
+        flex flex-col z-[1020]
     `;
 
     const paneHeader = document.createElement('div');
@@ -163,7 +163,7 @@ export function ProfilePaneComponent() {
             if (!backdropElement) {
                 backdropElement = document.createElement('div');
                 backdropElement.id = 'profile-pane-backdrop';
-                backdropElement.className = 'fixed inset-0 bg-black/50 z-40 opacity-0 transition-opacity duration-300 ease-in-out';
+                backdropElement.className = 'fixed inset-0 bg-black/50 opacity-0 transition-opacity duration-300 ease-in-out z-[1010]';
                 backdropElement.addEventListener('click', () => setProfilePaneState(false));
                 document.body.appendChild(backdropElement);
                 requestAnimationFrame(() => {
