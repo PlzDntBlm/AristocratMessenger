@@ -2,16 +2,45 @@
 @config "../tailwind.config.js";
 
 @theme {
+    /* Font Families*/
     --font-heading: "MedievalSharp", serif;
     --font-body: "Cormorant Garamond", serif;
+
+    /* Light Theme Colors */
+    --color-background-light: theme(colors.stone.200); /* Main page bg */
+    --color-surface-light: theme(colors.stone.50);    /* Card/Pane bg */
+    --color-text-primary-light: theme(colors.stone.800);
+    --color-text-secondary-light: theme(colors.stone.500);
+    --color-border-light: theme(colors.stone.300);
+
+    /* Dark Theme Colors */
+    --color-background-dark: theme(colors.stone.900);
+    --color-surface-dark: theme(colors.stone.800);
+    --color-text-primary-dark: theme(colors.stone.200);
+    --color-text-secondary-dark: theme(colors.stone.400);
+    --color-border-dark: theme(colors.stone.700);
+
+    /* Accent & Action Colors (can be shared or have dark variants) */
+    --color-accent: theme(colors.amber.500);
+    --color-accent-hover: theme(colors.amber.600);
+    --color-action: theme(colors.blue.700);
+    --color-action-hover: theme(colors.blue.800);
+    --color-destructive: theme(colors.red.700);
+    --color-destructive-hover: theme(colors.red.800);
 }
 
 @layer base {
     body {
-        @apply font-body;
+        /* Apply base fonts and colors */
+        @apply font-body bg-background text-text-primary dark:bg-dark-background dark:text-dark-text-primary transition-colors duration-300;
     }
 
     h1, h2, h3, h4, h5, h6 {
         @apply font-heading;
+    }
+
+    /* Style for other common elements */
+    hr, .border-themed {
+        @apply border-border-light dark:border-border-dark;
     }
 }
