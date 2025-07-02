@@ -350,4 +350,70 @@ router.get('/admin/users', [isAuthenticated, isAdministrator], async (req, res) 
     }
 });
 
+/**
+ * PUT /api/admin/users/:id/role
+ * Toggles the isAdmin status of a specific user.
+ * Requires administrator privileges.
+ */
+router.put('/admin/users/:id/role', [isAuthenticated, isAdministrator], async (req, res) => {
+    const userIdToChange = req.params.id;
+    const { isAdmin } = req.body; // Expecting { isAdmin: true } or { isAdmin: false }
+
+    if (typeof isAdmin !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'Invalid "isAdmin" value provided.' });
+    }
+
+    // Prevent an admin from accidentally removing their own admin status via this endpoint
+    if (parseInt(userIdToChange, 10) === req.user.id) {
+        return res.status(403).json({ success: false, message: 'Administrators cannot change their own role.' });
+    }
+
+    try {
+        const userToUpdate = await User.findByPk(userIdToChange);
+        if (!userToUpdate) {
+            return res.status(404).json({ success: false, message: 'User to update not found.' });
+        }
+
+        userToUpdate.isAdmin = isAdmin;
+        await userToUpdate.save();
+
+        res.json({ success: true, message: `User role for "${userToUpdate.username}" updated successfully.` });
+
+    } catch (error) {
+        console.error(`Error toggling admin role for user ${userIdToChange}:`, error);
+        res.status(500).json({ success: false, message: 'An error occurred while updating user role.' });
+    }
+});
+
+/**
+ * DELETE /api/admin/users/:id
+ * Deletes a specific user.
+ * Requires administrator privileges.
+ */
+router.delete('/admin/users/:id', [isAuthenticated, isAdministrator], async (req, res) => {
+    const userIdToDelete = req.params.id;
+
+    // Prevent an admin from deleting themselves
+    if (parseInt(userIdToDelete, 10) === req.user.id) {
+        return res.status(403).json({ success: false, message: 'Administrators cannot delete their own account.' });
+    }
+
+    try {
+        const userToDelete = await User.findByPk(userIdToDelete);
+        if (!userToDelete) {
+            return res.status(404).json({ success: false, message: 'User to delete not found.' });
+        }
+
+        const deletedUsername = userToDelete.username;
+        await userToDelete.destroy(); // This is a hard delete
+
+        res.json({ success: true, message: `User "${deletedUsername}" has been deleted successfully.` });
+
+    } catch (error)
+    {
+        console.error(`Error deleting user ${userIdToDelete}:`, error);
+        res.status(500).json({ success: false, message: 'An error occurred while deleting the user.' });
+    }
+});
+
 module.exports = router;

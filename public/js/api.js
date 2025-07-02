@@ -228,6 +228,73 @@ async function updateUserProfile(profileData) {
     return await putData('/api/users/profile', profileData);
 }
 
+/**
+ * NEW generic helper for DELETE requests.
+ * @param {string} url - The URL to send the DELETE request to.
+ * @returns {Promise<object>} - A promise that resolves to the server's JSON response.
+ */
+async function deleteData(url = '') {
+    try {
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) {
+            let errorMsg = `HTTP error! status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.message || errorMsg;
+            } catch (e) { /* Ignore if body isn't JSON */ }
+            const error = new Error(errorMsg);
+            error.status = response.status;
+            throw error;
+        }
+        // DELETE requests might not return a body, but if they do, parse as JSON
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            return response.json();
+        } else {
+            return { success: true }; // Assume success if no JSON body and status is ok
+        }
+    } catch (error) {
+        console.error(`API DELETE error for ${url}:`, error);
+        throw error;
+    }
+}
+
+// --- ADMIN API FUNCTIONS ---
+
+/**
+ * Fetches the full list of users for the admin panel.
+ * @returns {Promise<object>}
+ */
+async function getAllUsersForAdmin() {
+    console.log('API: (Admin) Fetching all users...');
+    return await getData('/api/admin/users');
+}
+
+/**
+ * Updates a user's role.
+ * @param {number} userId - The ID of the user to update.
+ * @param {boolean} isAdmin - The new admin status.
+ * @returns {Promise<object>}
+ */
+async function updateUserRole(userId, isAdmin) {
+    console.log(`API: (Admin) Setting isAdmin=${isAdmin} for user ID ${userId}...`);
+    return await putData(`/api/admin/users/${userId}/role`, { isAdmin });
+}
+
+/**
+ * Deletes a user.
+ * @param {number} userId - The ID of the user to delete.
+ * @returns {Promise<object>}
+ */
+async function deleteUser(userId) {
+    console.log(`API: (Admin) Deleting user ID ${userId}...`);
+    return await deleteData(`/api/admin/users/${userId}`);
+}
+
+
 export {
     getToken,
     getMyProfile,
@@ -241,5 +308,8 @@ export {
     getMessageById,
     getLocations,
     updateUserProfile,
-    checkLocationName
+    checkLocationName,
+    getAllUsersForAdmin,
+    updateUserRole,
+    deleteUser,
 };
