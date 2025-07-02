@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { User, Message ,Location} = require('../models');
-const { isAuthenticated } = require('../middleware/authMiddleware');
+const { isAuthenticated, isAdministrator } = require('../middleware/authMiddleware');
 const { Op } = require('sequelize');
 
 /**
@@ -331,5 +331,23 @@ router.post('/locations/check-name', async (req, res) => {
     }
 });
 
+// --- ADMIN ROUTES ---
+/**
+ * GET /api/admin/users
+ * Fetches a list of all users.
+ * Requires the user to be an authenticated administrator.
+ */
+router.get('/admin/users', [isAuthenticated, isAdministrator], async (req, res) => {
+    try {
+        const users = await User.findAll({
+            attributes: ['id', 'username', 'email', 'isAdmin', 'createdAt'],
+            order: [['id', 'ASC']]
+        });
+        res.json({ success: true, data: users });
+    } catch (error) {
+        console.error('Error fetching all users for admin:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch user list.' });
+    }
+});
 
 module.exports = router;

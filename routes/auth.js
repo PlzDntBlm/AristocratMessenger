@@ -117,7 +117,7 @@ router.post('/login', async (req, res) => {
                 as: 'location',
                 attributes: ['name', 'x', 'y', 'type', 'description']
             }],
-            attributes: ['id', 'username', 'email', 'createdAt', 'password']
+            attributes: ['id', 'username', 'email', 'createdAt', 'password', 'isAdmin']
         });
 
         if (!user) {
@@ -128,7 +128,8 @@ router.post('/login', async (req, res) => {
         if (match) {
             const payload = {
                 id: user.id,
-                username: user.username
+                username: user.username,
+                isAdmin: user.isAdmin
             };
             const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
 

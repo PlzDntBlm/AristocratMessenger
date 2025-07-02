@@ -41,6 +41,23 @@ const isAuthenticated = (req, res, next) => {
     }
 };
 
+/**
+ * Middleware to check if the authenticated user is an administrator.
+ * Must be used AFTER the isAuthenticated middleware.
+ */
+const isAdministrator = (req, res, next) => {
+    // req.user is attached by the isAuthenticated middleware
+    if (req.user && req.user.isAdmin) {
+        // User is an admin, proceed to the requested route
+        next();
+    } else {
+        // User is not an admin
+        console.log("Auth Middleware: Admin access denied.");
+        res.status(403).json({ success: false, message: 'Forbidden. Administrator access required.' });
+    }
+};
+
 module.exports = {
-    isAuthenticated
+    isAuthenticated,
+    isAdministrator
 };
