@@ -45,7 +45,7 @@ export function NavbarComponent() {
         // Logged-in user view
         authHTML = `
             <span class="text-gray-300 px-3 py-2 text-sm hidden md:inline">Welcome, ${state.currentUser?.username || 'User'}!</span>
-            <a href="/profile" data-route="profile" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Profile</a>
+            <a href="/home" data-route="home" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Home</a>
             <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Logout</button>
         `;
     } else {
