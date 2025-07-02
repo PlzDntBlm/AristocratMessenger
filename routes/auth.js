@@ -101,7 +101,7 @@ router.post('/register', async (req, res) => {
 
 /**
  * POST /auth/login
- * Validates credentials and returns a signed JWT.
+ * Validates credentials and returns a signed JWT and the full user profile.
  */
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
@@ -111,6 +111,12 @@ router.post('/login', async (req, res) => {
     try {
         const user = await User.findOne({
             where: { email: email },
+            // Fetch the user's location along with their other details
+            include: [{
+                model: Location,
+                as: 'location',
+                attributes: ['name', 'x', 'y', 'type', 'description']
+            }],
             attributes: ['id', 'username', 'email', 'createdAt', 'password']
         });
 
@@ -120,34 +126,26 @@ router.post('/login', async (req, res) => {
 
         const match = await bcrypt.compare(password, user.password);
         if (match) {
-            // User authenticated, create JWT payload
             const payload = {
                 id: user.id,
                 username: user.username
-                // Add roles here in the future, e.g., role: user.role
             };
+            const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
 
-            // Sign the token
-            const token = jwt.sign(
-                payload,
-                process.env.JWT_SECRET,
-                { expiresIn: '24h' }
-            );
-
-            // Fetch full user data to return to client (for initial state)
+            // Construct the response object, which now includes the location data
             const userResponseData = {
                 id: user.id,
                 username: user.username,
                 email: user.email,
                 createdAt: user.createdAt,
-                // Location data will now be fetched by the new /api/users/me endpoint
+                location: user.location || null
             };
 
             res.status(200).json({
                 success: true,
                 message: `Login successful for ${user.username}!`,
                 token: token,
-                user: userResponseData
+                user: userResponseData // Send the complete user object
             });
         } else {
             return res.status(401).json({ success: false, message: "Invalid email or password." });

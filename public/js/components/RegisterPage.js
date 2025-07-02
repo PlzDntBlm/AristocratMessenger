@@ -20,104 +20,114 @@ function getSquaredDistance(p1, p2) {
     return dx * dx + dy * dy;
 }
 
-
 export function RegisterPageComponent() {
-    // --- Component State ---
     let map = null;
     let existingLocations = [];
     let newLocationMarker = null;
 
-    // --- Main Container ---
     const container = document.createElement('div');
     container.id = 'component-register';
-    container.className = 'w-full max-w-4xl mx-auto'; // Use a wider container
+    container.className = 'w-full max-w-4xl mx-auto';
 
     /**
-     * Main render function that draws the component based on the current state.
+     * Main render function that draws the component shell and manages tab visibility.
      */
     function render() {
         const regState = getState().registrationForm;
         const currentTab = regState.currentTab;
 
-        container.innerHTML = `
-            <h2 class="text-3xl font-heading mb-6 text-center">Establish Your Legacy</h2>
-            
-            <div class="flex border-b border-border-color dark:border-dark-border-color mb-6">
-                <div class="tab-item ${currentTab === 1 ? 'active' : ''}">1. Credentials</div>
-                <div class="tab-item ${currentTab === 2 ? 'active' : ''}">2. Choose Land</div>
-                <div class="tab-item ${currentTab === 3 ? 'active' : ''}">3. Name Your Seat</div>
-            </div>
+        // On the first render, create the structure
+        if (!container.innerHTML) {
+            container.innerHTML = `
+                <h2 class="text-3xl font-heading mb-6 text-center">Establish Your Legacy</h2>
+                <div id="register-tabs-nav" class="flex border-b border-border-color dark:border-dark-border-color mb-6"></div>
+                <div id="register-tabs-content-container" class="relative"></div>
+                <div id="register-global-error" class="text-red-500 mt-4 text-center"></div>
+            `;
+            createTabs(); // Create the tabs and their content containers once
+        }
 
-            <div id="register-tab-content"></div>
+        // Update active tab styles
+        const tabNavItems = container.querySelectorAll('.tab-item');
+        tabNavItems.forEach((tab, index) => {
+            tab.classList.toggle('active', (index + 1) === currentTab);
+        });
 
-            <div id="register-global-error" class="text-red-500 mt-4 text-center"></div>
-        `;
+        // Show/hide tab content containers
+        const tabContentItems = container.querySelectorAll('.tab-content');
+        tabContentItems.forEach((content, index) => {
+            content.classList.toggle('hidden', (index + 1) !== currentTab);
+        });
 
-        renderTabContent(currentTab);
-        attachEventListeners();
+        // If switching to tab 2 and map isn't initialized, initialize it.
+        if (currentTab === 2 && !map) {
+            setTimeout(initializeRegisterMap, 0);
+        }
+
+        attachEventListeners(); // Re-attach listeners for new buttons if needed (though now mostly static)
     }
 
     /**
-     * Renders the content for the currently active tab.
-     * @param {number} tabNumber - The tab to render (1, 2, or 3).
+     * Creates the tab navigation and content containers a single time.
      */
-    function renderTabContent(tabNumber) {
-        const contentDiv = container.querySelector('#register-tab-content');
+    function createTabs() {
+        const navContainer = container.querySelector('#register-tabs-nav');
+        const contentContainer = container.querySelector('#register-tabs-content-container');
         const regState = getState().registrationForm;
 
-        switch (tabNumber) {
-            case 1:
-                contentDiv.innerHTML = `
-                    <p class="text-text-secondary dark:text-dark-text-secondary mb-4 text-center">First, scribe your identity for the royal records.</p>
-                    <div class="space-y-4 max-w-md mx-auto">
-                        <div>
-                            <label for="reg-username" class="block text-sm font-bold mb-2">Username:</label>
-                            <input type="text" id="reg-username" value="${regState.username}" class="form-input" required>
-                        </div>
-                        <div>
-                            <label for="reg-email" class="block text-sm font-bold mb-2">Email:</label>
-                            <input type="email" id="reg-email" value="${regState.email}" class="form-input" required>
-                        </div>
-                        <div>
-                            <label for="reg-password" class="block text-sm font-bold mb-2">Password:</label>
-                            <input type="password" id="reg-password" value="${regState.password}" class="form-input" required>
-                        </div>
-                        <div class="text-right">
-                            <button id="next-btn-1" class="btn-accent">Next &raquo;</button>
-                        </div>
-                    </div>
-                `;
-                break;
-            case 2:
-                contentDiv.innerHTML = `
-                    <p class="text-text-secondary dark:text-dark-text-secondary mb-4 text-center">Survey the realm and select a plot for your stronghold. You cannot build too close to an existing settlement.</p>
-                    <div id="register-map" class="h-[400px] md:h-[500px] w-full border-2 border-border-color dark:border-dark-border-color rounded shadow-lg"></div>
-                    <div id="map-error" class="text-red-500 text-sm mt-2"></div>
-                    <div class="flex justify-between mt-4">
-                        <button id="prev-btn-2" class="btn-secondary">&laquo; Previous</button>
-                        <button id="next-btn-2" class="btn-accent" ${regState.x === null ? 'disabled' : ''}>Next &raquo;</button>
-                    </div>
-                `;
-                // Initialize map after the container is in the DOM
-                setTimeout(initializeRegisterMap, 0);
-                break;
-            case 3:
-                contentDiv.innerHTML = `
-                    <p class="text-text-secondary dark:text-dark-text-secondary mb-4 text-center">Your chosen land is at coordinates (X: ${regState.x}, Y: ${regState.y}). Now, give it a name.</p>
-                    <div class="space-y-4 max-w-md mx-auto">
-                         <div>
-                            <label for="reg-location-name" class="block text-sm font-bold mb-2">Seat Name:</label>
-                            <input type="text" id="reg-location-name" value="${regState.locationName}" class="form-input" required>
-                            <div id="location-name-feedback" class="text-sm mt-1"></div>
-                        </div>
-                        <div class="flex justify-between mt-6">
-                            <button id="prev-btn-3" class="btn-secondary">&laquo; Previous</button>
-                            <button id="register-btn-final" class="btn-accent">Found Your Legacy</button>
-                        </div>
-                    </div>
-                `;
-                break;
-        }
+        navContainer.innerHTML = `
+            <div class="tab-item">1. Credentials</div>
+            <div class="tab-item">2. Choose Land</div>
+            <div class="tab-item">3. Name Your Seat</div>
+        `;
+
+        // --- Tab 1 Content ---
+        const tab1 = document.createElement('div');
+        tab1.className = 'tab-content';
+        tab1.innerHTML = `
+            <p class="text-text-secondary dark:text-dark-text-secondary mb-4 text-center">First, scribe your identity for the royal records.</p>
+            <div class="space-y-4 max-w-md mx-auto">
+                <div><label for="reg-username" class="block text-sm font-bold mb-2">Username:</label><input type="text" id="reg-username" value="${regState.username}" class="form-input" required></div>
+                <div><label for="reg-email" class="block text-sm font-bold mb-2">Email:</label><input type="email" id="reg-email" value="${regState.email}" class="form-input" required></div>
+                <div><label for="reg-password" class="block text-sm font-bold mb-2">Password:</label><input type="password" id="reg-password" value="${regState.password}" class="form-input" required></div>
+                <div class="text-right"><button id="next-btn-1" class="btn-accent">Next &raquo;</button></div>
+            </div>
+        `;
+
+        // --- Tab 2 Content ---
+        const tab2 = document.createElement('div');
+        tab2.className = 'tab-content hidden';
+        tab2.innerHTML = `
+            <p class="text-text-secondary dark:text-dark-text-secondary mb-4 text-center">Survey the realm and select a plot for your stronghold. You cannot build too close to an existing settlement.</p>
+            <div id="register-map" class="h-[400px] md:h-[500px] w-full border-2 border-border-color dark:border-dark-border-color rounded shadow-lg"></div>
+            <div id="map-error" class="text-red-500 text-sm mt-2"></div>
+            <div class="flex justify-between mt-4">
+                <button id="prev-btn-2" class="btn-secondary">&laquo; Previous</button>
+                <button id="next-btn-2" class="btn-accent" ${regState.x === null ? 'disabled' : ''}>Next &raquo;</button>
+            </div>
+        `;
+
+        // --- Tab 3 Content ---
+        const tab3 = document.createElement('div');
+        tab3.className = 'tab-content hidden';
+        tab3.innerHTML = `
+            <p id="tab3-coords-text" class="text-text-secondary dark:text-dark-text-secondary mb-4 text-center"></p>
+            <div class="space-y-4 max-w-md mx-auto">
+                 <div>
+                    <label for="reg-location-name" class="block text-sm font-bold mb-2">Seat Name:</label>
+                    <input type="text" id="reg-location-name" value="${regState.locationName}" class="form-input" required>
+                    <div id="location-name-feedback" class="text-sm mt-1"></div>
+                </div>
+                <div class="flex justify-between mt-6">
+                    <button id="prev-btn-3" class="btn-secondary">&laquo; Previous</button>
+                    <button id="register-btn-final" class="btn-accent">Found Your Legacy</button>
+                </div>
+            </div>
+        `;
+
+        contentContainer.appendChild(tab1);
+        contentContainer.appendChild(tab2);
+        contentContainer.appendChild(tab3);
     }
 
     /**
@@ -164,8 +174,10 @@ export function RegisterPageComponent() {
             alert('You must select a location on the map.');
             return;
         }
+        // Update the text on tab 3 before switching to it
+        container.querySelector('#tab3-coords-text').textContent = `Your chosen land is at coordinates (X: ${x}, Y: ${y}). Now, give it a name.`;
         setRegistrationFormState({ currentTab: 3 });
-        render(); // Re-render for tab 3
+        render(); // Re-render to show tab 3
     }
 
     /**
