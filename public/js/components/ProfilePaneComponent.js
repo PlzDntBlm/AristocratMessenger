@@ -85,8 +85,14 @@ export function ProfilePaneComponent() {
         logoutButton.className = 'w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-3 focus:outline-none focus:ring-2 focus:ring-red-400';
         logoutButton.onclick = () => publish('requestLogout');
 
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete Account';
+        deleteButton.className = 'w-full text-destructive dark:text-red-500 hover:underline text-xs mt-4';
+        deleteButton.onclick = handleDeleteProfile;
+
         paneFooter.appendChild(editProfileButton);
         paneFooter.appendChild(logoutButton);
+        paneFooter.appendChild(deleteButton);
 
         populateProfileData(); // Repopulate the main content area
     }
@@ -162,6 +168,30 @@ export function ProfilePaneComponent() {
             errorDiv.textContent = error.message;
             saveButton.disabled = false;
             saveButton.textContent = 'Save Changes';
+        }
+    }
+
+    async function handleDeleteProfile() {
+        if (!confirm('Are you sure you want to permanently delete your account? All of your messages and location data will be disassociated. This action cannot be undone.')) {
+            return;
+        }
+
+        // Second, more aggressive confirmation
+        if (!confirm('FINAL WARNING: This is your last chance to turn back. Are you absolutely certain?')) {
+            return;
+        }
+
+        try {
+            const result = await api.deleteMyProfile();
+            if (result.success) {
+                alert('Your account has been deleted. You will now be logged out.');
+                // The handleLogout function in app.js will clear the token and redirect.
+                publish('requestLogout');
+            } else {
+                throw new Error(result.message || 'Failed to delete account.');
+            }
+        } catch (error) {
+            alert(`Error deleting account: ${error.message}`);
         }
     }
 

@@ -285,6 +285,15 @@ async function updateUserRole(userId, isAdmin) {
 }
 
 /**
+ * Allows the current user to soft-delete their own account.
+ * @returns {Promise<object>}
+ */
+async function deleteMyProfile() {
+    console.log('API: Requesting to delete own profile...');
+    return await deleteData('/api/users/profile');
+}
+
+/**
  * Deletes a user.
  * @param {number} userId - The ID of the user to delete.
  * @returns {Promise<object>}
@@ -312,4 +321,5 @@ export {
     getAllUsersForAdmin,
     updateUserRole,
     deleteUser,
+    deleteMyProfile,
 };
