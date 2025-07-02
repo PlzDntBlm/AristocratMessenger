@@ -17,7 +17,7 @@ router.get('/users/me', isAuthenticated, async (req, res) => {
     try {
         // The user's id is available from the decoded token via `req.user.id`
         const user = await User.findByPk(req.user.id, {
-            attributes: ['id', 'username', 'email', 'createdAt'],
+            attributes: ['id', 'username', 'email', 'createdAt', 'isAdmin'],
             include: [{
                 model: Location,
                 as: 'location',

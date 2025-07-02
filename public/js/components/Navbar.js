@@ -41,11 +41,17 @@ export function NavbarComponent() {
     authContainer.className = 'flex items-center gap-2';
 
     let authHTML = '';
-    if (state.isLoggedIn) {
-        // Logged-in user view
+    if (state.isLoggedIn && state.currentUser) {
+        // --- NEW: Check for Admin Role ---
+        let adminLink = '';
+        if (state.currentUser.isAdmin) {
+            adminLink = `<a href="/admin" data-route="admin" class="text-white bg-yellow-600 hover:bg-yellow-700 px-3 py-2 rounded-md text-sm font-bold">Admin Panel</a>`;
+        }
+
         authHTML = `
-            <span class="text-gray-300 px-3 py-2 text-sm hidden md:inline">Welcome, ${state.currentUser?.username || 'User'}!</span>
-            <a href="/home" data-route="home" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Home</a>
+            ${adminLink}
+            <span class="text-gray-300 px-3 py-2 text-sm hidden md:inline">Welcome, ${state.currentUser.username || 'User'}!</span>
+            <a href="/profile" data-route="profile" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Profile</a>
             <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Logout</button>
         `;
     } else {

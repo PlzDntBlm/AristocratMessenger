@@ -14,6 +14,7 @@ import { ScriptoriumComponent } from './components/ScriptoriumComponent.js';
 import { CabinetComponent } from './components/CabinetComponent.js';
 import { MessageDetailComponent } from './components/MessageDetailComponent.js';
 import { subscribe, publish } from './pubsub.js';
+import { AdminPageComponent } from './components/AdminPageComponent.js';
 
 
 // --- Core Elements ---
@@ -136,6 +137,19 @@ function renderRouteByPath(path) {
                 console.warn(`App: Missing message ID for /message route. Redirecting to /cabinet.`);
                 history.replaceState({ path: '/cabinet' }, '', '/cabinet');
                 componentElement = CabinetComponent();
+            }
+            break;
+        // --- ADMIN ROUTE CASE ---
+        case 'admin':
+            // The API protecting the data is the source of truth, but we can
+            // also prevent rendering for non-admins on the client-side for a better UX.
+            if (currentAppState.currentUser && currentAppState.currentUser.isAdmin) {
+                componentElement = AdminPageComponent();
+            } else {
+                // If a non-admin tries to access /admin, show an error or redirect
+                console.warn("Client-side block: Non-admin attempted to access /admin route.");
+                history.replaceState({ path: '/home' }, '', '/home');
+                componentElement = HomePageComponent(currentAppState.currentUser);
             }
             break;
         // Note: MapComponent is currently part of HomePage, not a separate route.

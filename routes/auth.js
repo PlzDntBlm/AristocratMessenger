@@ -139,7 +139,8 @@ router.post('/login', async (req, res) => {
                 username: user.username,
                 email: user.email,
                 createdAt: user.createdAt,
-                location: user.location || null
+                location: user.location || null,
+                isAdmin: user.isAdmin
             };
 
             res.status(200).json({
