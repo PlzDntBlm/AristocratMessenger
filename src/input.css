@@ -1,1 +1,17 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
+
+@theme {
+    --font-heading: "MedievalSharp", serif;
+    --font-body: "Cormorant Garamond", serif;
+}
+
+@layer base {
+    body {
+        @apply font-body;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        @apply font-heading;
+    }
+}

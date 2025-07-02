@@ -132,7 +132,7 @@ export function MessageDetailComponent(messageId) {
         bodyContainer.appendChild(bodyHeader);
 
         const bodyParagraph = document.createElement('p');
-        bodyParagraph.className = 'text-stone-700 dark:text-stone-300 whitespace-pre-wrap'; // Preserve line breaks
+        bodyParagraph.className = 'text-stone-700 dark:text-stone-300 whitespace-pre-wrap font-heading text-lg';
         bodyParagraph.textContent = msg.body;
         bodyContainer.appendChild(bodyParagraph);
 

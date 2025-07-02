@@ -84,8 +84,8 @@ export function ScriptoriumComponent() {
 
     const bodyTextarea = document.createElement('textarea');
     bodyTextarea.id = 'scriptorium-body';
-    bodyTextarea.rows = '6';
-    bodyTextarea.className = 'mt-1 block w-full p-2 border border-stone-300 rounded dark:bg-stone-600 dark:border-stone-500 dark:text-gray-200 focus:ring-yellow-500 focus:border-yellow-500 resize-none';
+    bodyTextarea.rows = '8';
+    bodyTextarea.className = 'mt-1 block w-full p-2 border border-stone-300 rounded dark:bg-stone-600 dark:border-stone-500 dark:text-gray-200 focus:ring-yellow-500 focus:border-yellow-500 resize-y font-heading text-lg';
     bodyTextarea.placeholder = 'Pen your letter here...';
     messageFormPanel.appendChild(bodyTextarea);
 

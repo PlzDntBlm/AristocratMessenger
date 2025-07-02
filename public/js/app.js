@@ -6,6 +6,7 @@
 import * as api from './api.js';
 import { getState, setAuthState, setScriptoriumState, setProfilePaneState } from './state.js';
 import { renderContent, renderNavbar } from './ui.js';
+import { initializeTheme, toggleTheme } from './theme.js';
 import { LoginPageComponent } from './components/LoginPage.js';
 import { RegisterPageComponent } from './components/RegisterPage.js';
 import { HomePageComponent } from './components/HomePage.js';
@@ -160,6 +161,12 @@ function renderRouteByPath(path) {
 function handleGlobalClick(event) {
     const target = event.target;
     const currentScriptoriumState = getState('scriptorium');
+
+    if (target.closest('#theme-toggle-button')) {
+        event.preventDefault();
+        toggleTheme();
+        return;
+    }
 
     // Profile Pane Crest Click
     if (target.closest('#profile-crest-button')) {
