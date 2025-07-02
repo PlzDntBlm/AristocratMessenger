@@ -235,27 +235,19 @@ function handleGlobalClick(event) {
 }
 
 /**
- * Handles the logout process.
+ * Handles the logout process by deleting the token and updating state.
  */
 async function handleLogout() {
     console.log("App: Logout initiated...");
-    try {
-        const result = await api.logoutUser();
-        if (result.success) {
-            setAuthState(false, null);
-            // Close any open overlays/panes on logout
-            setScriptoriumState({ isOpen: false, recipient: null, subject: '', body: '' });
-            setProfilePaneState(false);
-            const loginPath = '/login';
-            history.pushState({ path: loginPath }, '', loginPath);
-            renderRouteByPath(loginPath);
-        } else {
-            throw new Error(result.message || 'Logout failed');
-        }
-    } catch (error) {
-        console.error("App: Logout failed:", error);
-        alert(`Logout failed: ${error.message}`);
-    }
+    await api.logoutUser(); // This just deletes the token from local storage
+    setAuthState(false, null);
+    setScriptoriumState({ isOpen: false });
+    setProfilePaneState(false);
+
+    // Redirect to login page
+    const loginPath = '/login';
+    history.pushState({ path: loginPath }, '', loginPath);
+    renderRouteByPath(loginPath);
 }
 
 /**
@@ -357,18 +349,37 @@ async function initializeApp() {
     subscribe('requestLogout', handleLogout); // Listen for logout requests (e.g., from ProfilePane)
 
 
-    try {
-        const authStatus = await api.checkAuthStatus();
-        // authStatus.user now contains .location if available
-        setAuthState(authStatus.isLoggedIn, authStatus.user || null);
-    } catch (error) {
-        console.error("App: Failed to fetch initial auth status:", error);
+    // --- Initial JWT-based Auth Check ---
+    const token = api.getToken();
+    if (token) {
+        console.log('App: Token found, attempting to verify user...');
+        try {
+            // Use the new /api/users/me endpoint
+            const response = await api.getMyProfile();
+            if (response.success) {
+                setAuthState(true, response.user);
+            } else {
+                // Token is invalid or expired
+                console.warn('App: Token was found but is invalid. Logging out.');
+                api.logoutUser(); // Clear the bad token
+                setAuthState(false, null);
+            }
+        } catch (error) {
+            console.error("App: Error verifying token on init:", error.message);
+            api.logoutUser(); // Clear the bad token
+            setAuthState(false, null);
+        }
+    } else {
+        // No token found, ensure logged out state
+        console.log('App: No token found. User is logged out.');
         setAuthState(false, null);
     }
 
+    // Set initial states for overlays to be closed.
     setScriptoriumState({ isOpen: false, recipient: null, subject: '', body: '' });
     setProfilePaneState(false); // Ensure profile pane is closed on init
 
+    // --- Initial Route Rendering ---
     const initialPath = window.location.pathname;
     history.replaceState({ path: initialPath }, '', initialPath);
     renderRouteByPath(initialPath);
