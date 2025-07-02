@@ -309,5 +309,28 @@ router.put('/users/profile', isAuthenticated, async (req, res) => {
     }
 });
 
+/**
+ * POST /api/locations/check-name
+ * Checks if a given location name is available.
+ * This is a public route so it can be used during registration before a user is created.
+ */
+router.post('/locations/check-name', async (req, res) => {
+    const { name } = req.body;
+    if (!name) {
+        return res.status(400).json({ available: false, message: 'Name is required.' });
+    }
+    try {
+        const location = await Location.findOne({ where: { name: name } });
+        if (location) {
+            res.json({ available: false, message: 'This name is already taken.' });
+        } else {
+            res.json({ available: true, message: 'This name is available.' });
+        }
+    } catch (error) {
+        console.error('Error checking location name:', error);
+        res.status(500).json({ available: false, message: 'Error checking name availability.' });
+    }
+});
+
 
 module.exports = router;

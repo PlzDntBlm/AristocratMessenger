@@ -5,34 +5,97 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken'); // Import jsonwebtoken
-const { User, Location } = require('../models');
+const { User, Location, sequelize} = require('../models');
 const router = express.Router();
 const saltRounds = 10;
+const MIN_DISTANCE_SQUARED = 25; // Minimum distance of 5km, squared for efficiency
+
+/**
+ * Helper function to calculate the squared distance between two points.
+ * Using squared distance avoids costly square root operations.
+ * @param {object} p1 - Point 1 with x and y properties.
+ * @param {object} p2 - Point 2 with x and y properties.
+ * @returns {number} The squared distance.
+ */
+function getSquaredDistance(p1, p2) {
+    const dx = p1.x - p2.x;
+    const dy = p1.y - p2.y;
+    return dx * dx + dy * dy;
+}
+
 
 /**
  * POST /auth/register
+ * Creates a new User and their initial Location in a single transaction.
+ * Expects: { username, email, password, locationName, x, y }
  */
 router.post('/register', async (req, res) => {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password) {
-        // Return JSON error
-        return res.status(400).json({ success: false, message: "Username, email, and password are required." });
+    const { username, email, password, locationName, x, y } = req.body;
+
+    // --- 1. Basic Validation ---
+    if (!username || !email || !password || !locationName || x === undefined || y === undefined) {
+        return res.status(400).json({ success: false, message: "All fields, including location name and coordinates, are required." });
     }
+
+    const t = await sequelize.transaction(); // Start a transaction
+
     try {
-        const existingUser = await User.findOne({ where: { email: email } });
+        // --- 2. Advanced Validation (within the transaction) ---
+        // Check for existing user email
+        const existingUser = await User.findOne({ where: { email: email }, transaction: t });
         if (existingUser) {
-            // Return JSON error
-            return res.status(409).json({ success: false, message: "Email already in use." });
+            await t.rollback();
+            return res.status(409).json({ success: false, message: "This email address is already registered." });
         }
+
+        // Check for unique location name
+        const existingLocationName = await Location.findOne({ where: { name: locationName }, transaction: t });
+        if (existingLocationName) {
+            await t.rollback();
+            return res.status(409).json({ success: false, message: "This location name is already taken. Please choose another." });
+        }
+
+        // Check for minimum distance from other locations
+        const allLocations = await Location.findAll({ transaction: t });
+        for (const loc of allLocations) {
+            if (getSquaredDistance({ x, y }, loc) < MIN_DISTANCE_SQUARED) {
+                await t.rollback();
+                return res.status(409).json({ success: false, message: `Your chosen location is too close to "${loc.name}". Please select a different spot.` });
+            }
+        }
+
+        // --- 3. Create Records ---
+        // All checks passed, proceed with creation
         const hashedPassword = await bcrypt.hash(password, saltRounds);
-        const newUser = await User.create({ username, email, password: hashedPassword });
-        console.log("New user created:", newUser.username, newUser.email);
-        // Return JSON success
-        res.status(201).json({ success: true, message: `User ${newUser.username} registered successfully!` });
+
+        // Create the user
+        const newUser = await User.create({
+            username,
+            email,
+            password: hashedPassword
+        }, { transaction: t });
+
+        // Create the associated location
+        await Location.create({
+            UserId: newUser.id,
+            name: locationName,
+            x: parseInt(x, 10),
+            y: parseInt(y, 10),
+            type: 'settlement', // Default type for new user locations
+            description: `The home of ${username}.`
+        }, { transaction: t });
+
+        // If everything was successful, commit the transaction
+        await t.commit();
+
+        console.log("New user and location created:", newUser.username, locationName);
+        res.status(201).json({ success: true, message: `Lord ${newUser.username} has established their seat at ${locationName}! You may now log in.` });
+
     } catch (error) {
-        console.error("Registration error:", error);
-        // Return JSON error
-        res.status(500).json({ success: false, message: "An error occurred during registration." });
+        // If any error occurred, rollback the transaction
+        await t.rollback();
+        console.error("Registration transaction error:", error);
+        res.status(500).json({ success: false, message: "An unexpected error occurred during registration." });
     }
 });
 
