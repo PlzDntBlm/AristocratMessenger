@@ -309,6 +309,36 @@ router.put('/users/profile', isAuthenticated, async (req, res) => {
 });
 
 /**
+ * DELETE /api/users/profile
+ * Allows a logged-in user to soft-delete their own account.
+ */
+router.delete('/users/profile', isAuthenticated, async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const userToDelete = await User.findByPk(userId);
+
+        if (!userToDelete) {
+            // Should be impossible if isAuthenticated passed, but good practice
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        // Soft delete the user
+        await userToDelete.destroy();
+
+        // Note: We don't need to invalidate the JWT token on the server for this.
+        // The client will be responsible for deleting the token and logging the user out.
+        // Any future use of the old token will fail to find a user (since paranoid queries exclude deleted ones).
+
+        res.json({ success: true, message: 'Your account has been successfully deleted.' });
+
+    } catch (error) {
+        console.error(`Error soft-deleting user ${userId}:`, error);
+        res.status(500).json({ success: false, message: 'An error occurred while deleting your account.' });
+    }
+});
+
+/**
  * POST /api/locations/check-name
  * Checks if a given location name is available.
  * This is a public route so it can be used during registration before a user is created.
