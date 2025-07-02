@@ -14,6 +14,15 @@ const appState = {
         body: '',        // For future use
     },
     isProfilePaneOpen: false, // State for profile panel visibility
+    registrationForm: {
+        currentTab: 1,
+        username: '',
+        email: '',
+        password: '',
+        locationName: '',
+        x: null,
+        y: null,
+    },
 };
 
 function setAuthState(loggedInStatus, userData = null) {
@@ -62,6 +71,28 @@ function setProfilePaneState(isOpen) {
     }
 }
 
+/**
+ * Sets or updates the state for the registration form.
+ * @param {object} newRegistrationFormState - Partial or full state for the registration form.
+ */
+function setRegistrationFormState(newRegistrationFormState) {
+    let changed = false;
+    for (const key in newRegistrationFormState) {
+        if (Object.prototype.hasOwnProperty.call(newRegistrationFormState, key)) {
+            if (appState.registrationForm[key] !== newRegistrationFormState[key]) {
+                appState.registrationForm[key] = newRegistrationFormState[key];
+                changed = true;
+            }
+        }
+    }
+    if (changed) {
+        // We can publish an event if any component needs to react live to form changes.
+        // For now, the RegisterPageComponent will manage its own re-rendering internally.
+        console.log('State updated (Registration Form):', { ...appState.registrationForm });
+        publish('registrationFormStateChanged', { ...appState.registrationForm });
+    }
+}
+
 function getState(sliceKey = null) {
     if (sliceKey) {
         const slice = appState[sliceKey];
@@ -73,4 +104,4 @@ function getState(sliceKey = null) {
     return JSON.parse(JSON.stringify(appState));
 }
 
-export { getState, setAuthState, setScriptoriumState, setProfilePaneState };
+export { getState, setAuthState, setScriptoriumState, setProfilePaneState, setRegistrationFormState };

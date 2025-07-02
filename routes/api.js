@@ -227,18 +227,17 @@ router.put('/messages/:id/read', isAuthenticated, async (req, res) => {
 // --- Location API Endpoints ---
 /**
  * GET /api/locations
- * Fetches all locations along with basic user information (username) for map display.
- * Requires authentication.
+ * Fetches all locations for map display. This is a public route.
  */
-router.get('/locations', isAuthenticated, async (req, res) => {
+router.get('/locations', async (req, res) => { // <-- isAuthenticated has been removed
     try {
         const locations = await Location.findAll({
             include: [{
                 model: User,
-                as: 'user', // Alias defined in Location.associate
-                attributes: ['id', 'username'] // Only fetch necessary user attributes
+                as: 'user',
+                attributes: ['id', 'username']
             }],
-            order: [['name', 'ASC']] // Optional: order by location name
+            order: [['name', 'ASC']]
         });
         res.json({ success: true, data: locations });
     } catch (error) {

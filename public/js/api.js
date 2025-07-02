@@ -157,15 +157,27 @@ async function logoutUser() {
 }
 
 /**
- * Registers a new user. Does not send auth token.
+ * Registers a new user. Now includes location data.
  * @param {string} username
  * @param {string} email
  * @param {string} password
+ * @param {string} locationName
+ * @param {number} x
+ * @param {number} y
  * @returns {Promise<object>}
  */
-async function registerUser(username, email, password) {
+async function registerUser(username, email, password, locationName, x, y) {
     console.log(`API: Attempting registration for ${username} (${email})...`);
-    return await postData('/auth/register', { username, email, password });
+    // The data object now includes all required fields for the backend
+    const registrationData = {
+        username,
+        email,
+        password,
+        locationName,
+        x,
+        y,
+    };
+    return await postData('/auth/register', registrationData);
 }
 
 // All subsequent functions are now automatically authenticated
@@ -201,14 +213,24 @@ async function getLocations() {
     return await getData('/api/locations');
 }
 
+/**
+ * Checks if a given location name is available.
+ * @param {string} name - The location name to check.
+ * @returns {Promise<object>}
+ */
+async function checkLocationName(name) {
+    console.log(`API: Checking availability of location name "${name}"...`);
+    return await postData('/api/locations/check-name', { name });
+}
+
 async function updateUserProfile(profileData) {
     console.log('API: Updating user profile...');
     return await putData('/api/users/profile', profileData);
 }
 
 export {
-    getToken, // Export for app.js to check existence
-    getMyProfile, // The new auth check function
+    getToken,
+    getMyProfile,
     loginUser,
     logoutUser,
     registerUser,
@@ -218,5 +240,6 @@ export {
     getOutboxMessages,
     getMessageById,
     getLocations,
-    updateUserProfile
+    updateUserProfile,
+    checkLocationName
 };
