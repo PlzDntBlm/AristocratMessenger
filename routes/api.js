@@ -371,7 +371,7 @@ router.post('/locations/check-name', async (req, res) => {
  * Fetches a list of all users.
  * Requires the user to be an authenticated administrator.
  */
-router.get('/admin/users', [isAuthenticated, isAdministrator], async (req, res) => {
+router.get('/admin/users', isAuthenticated, isAdministrator, async (req, res) => {
     try {
         const users = await User.findAll({
             attributes: ['id', 'username', 'email', 'isAdmin', 'createdAt'],
@@ -389,7 +389,7 @@ router.get('/admin/users', [isAuthenticated, isAdministrator], async (req, res) 
  * Toggles the isAdmin status of a specific user.
  * Requires administrator privileges.
  */
-router.put('/admin/users/:id/role', [isAuthenticated, isAdministrator], async (req, res) => {
+router.put('/admin/users/:id/role', isAuthenticated, isAdministrator, async (req, res) => {
     const userIdToChange = req.params.id;
     const {isAdmin} = req.body; // Expecting { isAdmin: true } or { isAdmin: false }
 
@@ -424,7 +424,7 @@ router.put('/admin/users/:id/role', [isAuthenticated, isAdministrator], async (r
  * Deletes a specific user.
  * Requires administrator privileges.
  */
-router.delete('/admin/users/:id', [isAuthenticated, isAdministrator], async (req, res) => {
+router.delete('/admin/users/:id', isAuthenticated, isAdministrator, async (req, res) => {
     const userIdToDelete = req.params.id;
 
     // Prevent an admin from deleting themselves

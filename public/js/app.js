@@ -16,6 +16,7 @@ import {MessageDetailComponent} from './components/MessageDetailComponent.js';
 import {subscribe, publish} from './pubsub.js';
 import {AdminPageComponent} from './components/AdminPageComponent.js';
 import {ChatRoomPageComponent} from './components/ChatRoomPageComponent.js';
+import {NotFoundComponent} from './components/NotFoundComponent.js';
 
 
 // --- Core Elements ---
@@ -172,13 +173,10 @@ function renderRouteByPath(path) {
                 componentElement = HomePageComponent(currentAppState.currentUser);
             }
             break;
-        // Note: MapComponent is currently part of HomePage, not a separate route.
-        // If you want a dedicated /map route later, you'd add a case here.
         default:
-            console.warn(`Unknown route: ${routeName} from path ${normalizedPath}. Rendering 404-like content.`);
-            componentElement = document.createElement('div');
-            componentElement.className = 'p-6';
-            componentElement.innerHTML = `<h2 class="text-2xl font-semibold text-red-600 mb-4">404 - Page Not Found</h2><p>Sorry, the page you requested (${normalizedPath}) does not exist.</p><a href="/home" data-route="home" class="mt-4 inline-block text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">Return to Home</a>`;
+            console.warn(`Unknown route: ${routeName} from path ${normalizedPath}. Rendering 404 component.`);
+            componentElement = NotFoundComponent();
+            break;
     }
 
     if (componentElement) {

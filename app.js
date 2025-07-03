@@ -36,7 +36,7 @@ app.use('/libs/leaflet', express.static(path.join(__dirname, 'node_modules/leafl
 
 // Body Parsers
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({extended: true}));
 
 // --- Specific Routes ---
 app.use('/api', apiRouter);
@@ -69,8 +69,10 @@ app.use(serveSpaHtml);
 
 // --- Error Handling ---
 app.use((req, res, next) => {
-    console.log(`404 Handler: Route not found for ${req.method} ${req.originalUrl}`);
-    res.status(404).send("Sorry, that route doesn't exist.");
+    // This now catches everything that didn't match a file or an API route.
+    // We'll serve the main app and let the client-side router handle the 404 display.
+    console.log(`Final Handler: Serving index.ejs for unmatched route ${req.method} ${req.originalUrl}`);
+    res.status(404).render('index');
 });
 
 app.use((err, req, res, next) => {
