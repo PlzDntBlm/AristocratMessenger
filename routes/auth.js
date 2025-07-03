@@ -30,11 +30,14 @@ function getSquaredDistance(p1, p2) {
  * Expects: { username, email, password, locationName, x, y }
  */
 router.post('/register', async (req, res) => {
-    const { username, email, password, locationName, x, y } = req.body;
+    const {username, email, password, locationName, x, y} = req.body;
 
     // --- 1. Basic Validation ---
     if (!username || !email || !password || !locationName || x === undefined || y === undefined) {
-        return res.status(400).json({ success: false, message: "All fields, including location name and coordinates, are required." });
+        return res.status(400).json({
+            success: false,
+            message: "All fields, including location name and coordinates, are required."
+        });
     }
 
     const t = await sequelize.transaction(); // Start a transaction
@@ -42,25 +45,31 @@ router.post('/register', async (req, res) => {
     try {
         // --- 2. Advanced Validation (within the transaction) ---
         // Check for existing user email
-        const existingUser = await User.findOne({ where: { email: email }, transaction: t });
+        const existingUser = await User.findOne({where: {email: email}, transaction: t});
         if (existingUser) {
             await t.rollback();
-            return res.status(409).json({ success: false, message: "This email address is already registered." });
+            return res.status(409).json({success: false, message: "This email address is already registered."});
         }
 
         // Check for unique location name
-        const existingLocationName = await Location.findOne({ where: { name: locationName }, transaction: t });
+        const existingLocationName = await Location.findOne({where: {name: locationName}, transaction: t});
         if (existingLocationName) {
             await t.rollback();
-            return res.status(409).json({ success: false, message: "This location name is already taken. Please choose another." });
+            return res.status(409).json({
+                success: false,
+                message: "This location name is already taken. Please choose another."
+            });
         }
 
         // Check for minimum distance from other locations
-        const allLocations = await Location.findAll({ transaction: t });
+        const allLocations = await Location.findAll({transaction: t});
         for (const loc of allLocations) {
-            if (getSquaredDistance({ x, y }, loc) < MIN_DISTANCE_SQUARED) {
+            if (getSquaredDistance({x, y}, loc) < MIN_DISTANCE_SQUARED) {
                 await t.rollback();
-                return res.status(409).json({ success: false, message: `Your chosen location is too close to "${loc.name}". Please select a different spot.` });
+                return res.status(409).json({
+                    success: false,
+                    message: `Your chosen location is too close to "${loc.name}". Please select a different spot.`
+                });
             }
         }
 
@@ -73,17 +82,17 @@ router.post('/register', async (req, res) => {
             username,
             email,
             password: hashedPassword
-        }, { transaction: t });
+        }, {transaction: t});
 
         // Create the associated location
-        await Location.create({
+        const newLocation = await Location.create({
             UserId: newUser.id,
             name: locationName,
             x: parseInt(x, 10),
             y: parseInt(y, 10),
-            type: 'settlement', // Default type for new user locations
+            type: 'settlement',
             description: `The home of ${username}.`
-        }, { transaction: t });
+        }, {transaction: t});
 
         // Create the ChatRoom for this new Location
         await ChatRoom.create({
@@ -96,13 +105,16 @@ router.post('/register', async (req, res) => {
         await t.commit();
 
         console.log("New user, location, and chat room created:", newUser.username, locationName);
-        res.status(201).json({ success: true, message: `Lord ${newUser.username} has established their seat at ${locationName}! You may now log in.` });
+        res.status(201).json({
+            success: true,
+            message: `Lord ${newUser.username} has established their seat at ${locationName}! You may now log in.`
+        });
 
     } catch (error) {
         // If any error occurred, rollback the transaction
         await t.rollback();
         console.error("Registration transaction error:", error);
-        res.status(500).json({ success: false, message: "An unexpected error occurred during registration." });
+        res.status(500).json({success: false, message: "An unexpected error occurred during registration."});
     }
 });
 
@@ -111,13 +123,13 @@ router.post('/register', async (req, res) => {
  * Validates credentials and returns a signed JWT and the full user profile.
  */
 router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+    const {email, password} = req.body;
     if (!email || !password) {
-        return res.status(400).json({ success: false, message: "Email and password are required." });
+        return res.status(400).json({success: false, message: "Email and password are required."});
     }
     try {
         const user = await User.findOne({
-            where: { email: email },
+            where: {email: email},
             // Fetch the user's location along with their other details
             include: [{
                 model: Location,
@@ -128,7 +140,7 @@ router.post('/login', async (req, res) => {
         });
 
         if (!user) {
-            return res.status(401).json({ success: false, message: "Invalid email or password." });
+            return res.status(401).json({success: false, message: "Invalid email or password."});
         }
 
         const match = await bcrypt.compare(password, user.password);
@@ -138,7 +150,7 @@ router.post('/login', async (req, res) => {
                 username: user.username,
                 isAdmin: user.isAdmin
             };
-            const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
+            const token = jwt.sign(payload, process.env.JWT_SECRET, {expiresIn: '24h'});
 
             // Construct the response object, which now includes the location data
             const userResponseData = {
@@ -157,11 +169,11 @@ router.post('/login', async (req, res) => {
                 user: userResponseData // Send the complete user object
             });
         } else {
-            return res.status(401).json({ success: false, message: "Invalid email or password." });
+            return res.status(401).json({success: false, message: "Invalid email or password."});
         }
     } catch (error) {
         console.error("Login error:", error);
-        res.status(500).json({ success: false, message: "An error occurred during login." });
+        res.status(500).json({success: false, message: "An error occurred during login."});
     }
 });
 
@@ -174,7 +186,7 @@ router.post('/login', async (req, res) => {
  */
 router.post('/logout', (req, res) => {
     console.log("User logged out on client-side.");
-    res.status(200).json({ success: true, message: "Logout successful." });
+    res.status(200).json({success: true, message: "Logout successful."});
 });
 
 module.exports = router;
