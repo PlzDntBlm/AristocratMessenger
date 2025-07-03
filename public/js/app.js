@@ -4,17 +4,18 @@
  * manages interaction between state, api, and component rendering.
  */
 import * as api from './api.js';
-import { getState, setAuthState, setScriptoriumState, setProfilePaneState } from './state.js';
-import { renderContent, renderNavbar } from './ui.js';
-import { initializeTheme, toggleTheme } from './theme.js';
-import { LoginPageComponent } from './components/LoginPage.js';
-import { RegisterPageComponent } from './components/RegisterPage.js';
-import { HomePageComponent } from './components/HomePage.js';
-import { ScriptoriumComponent } from './components/ScriptoriumComponent.js';
-import { CabinetComponent } from './components/CabinetComponent.js';
-import { MessageDetailComponent } from './components/MessageDetailComponent.js';
-import { subscribe, publish } from './pubsub.js';
-import { AdminPageComponent } from './components/AdminPageComponent.js';
+import {getState, setAuthState, setScriptoriumState, setProfilePaneState} from './state.js';
+import {renderContent, renderNavbar} from './ui.js';
+import {initializeTheme, toggleTheme} from './theme.js';
+import {LoginPageComponent} from './components/LoginPage.js';
+import {RegisterPageComponent} from './components/RegisterPage.js';
+import {HomePageComponent} from './components/HomePage.js';
+import {ScriptoriumComponent} from './components/ScriptoriumComponent.js';
+import {CabinetComponent} from './components/CabinetComponent.js';
+import {MessageDetailComponent} from './components/MessageDetailComponent.js';
+import {subscribe, publish} from './pubsub.js';
+import {AdminPageComponent} from './components/AdminPageComponent.js';
+import {ChatRoomPageComponent} from './components/ChatRoomPageComponent.js';
 
 
 // --- Core Elements ---
@@ -42,7 +43,7 @@ function showScriptorium() {
  * Updates the Scriptorium state to closed.
  */
 function hideScriptorium() {
-    setScriptoriumState({ isOpen: false });
+    setScriptoriumState({isOpen: false});
     console.log('App: Requested to hide Scriptorium (state updated)');
 }
 
@@ -63,7 +64,7 @@ async function handleSendMessage() {
         if (result.success) {
             alert('Message sent successfully!');
             hideScriptorium();
-            publish('messageSent', { message: result.data });
+            publish('messageSent', {message: result.data});
         } else {
             alert(`Failed to send message: ${result.message || 'Unknown error'}`);
             if (sendButton) sendButton.disabled = false;
@@ -95,14 +96,24 @@ function renderRouteByPath(path) {
     const currentAppState = getState();
     const normalizedPath = path.startsWith('/') ? path : '/' + path;
     const pathSegments = normalizedPath.split('/').filter(Boolean);
+
     let routeName = pathSegments[0] || (currentAppState.isLoggedIn ? 'home' : 'login');
     let routeParam = pathSegments[1] || null;
+
+    // A more robust way to handle multi-segment routes like /chat/room/:id
+    if (pathSegments[0] === 'chat' && pathSegments[1] === 'room' && pathSegments[2]) {
+        routeName = 'chatroom';
+        routeParam = pathSegments[2];
+    } else if (pathSegments[0] === 'message' && pathSegments[1]) {
+        routeName = 'message';
+        routeParam = pathSegments[1];
+    }
 
     if (normalizedPath === '/' || normalizedPath === '') {
         routeName = currentAppState.isLoggedIn ? 'home' : 'login';
         const targetPath = '/' + routeName;
         if (window.location.pathname !== targetPath) {
-            history.replaceState({ path: targetPath }, '', targetPath);
+            history.replaceState({path: targetPath}, '', targetPath);
         }
     }
 
@@ -110,7 +121,7 @@ function renderRouteByPath(path) {
     if (protectedRoutes.includes(routeName) && !currentAppState.isLoggedIn) {
         console.warn(`App: Access to protected route ${normalizedPath} denied. Redirecting to /login.`);
         const loginPath = '/login';
-        history.replaceState({ path: loginPath }, '', loginPath);
+        history.replaceState({path: loginPath}, '', loginPath);
         routeName = 'login';
         routeParam = null;
     }
@@ -118,11 +129,11 @@ function renderRouteByPath(path) {
     switch (routeName) {
         case 'login':
             componentElement = currentAppState.isLoggedIn ? HomePageComponent(currentAppState.currentUser) : LoginPageComponent();
-            if (currentAppState.isLoggedIn && window.location.pathname !== '/home') history.replaceState({ path: '/home' }, '', '/home');
+            if (currentAppState.isLoggedIn && window.location.pathname !== '/home') history.replaceState({path: '/home'}, '', '/home');
             break;
         case 'register':
             componentElement = currentAppState.isLoggedIn ? HomePageComponent(currentAppState.currentUser) : RegisterPageComponent();
-            if (currentAppState.isLoggedIn && window.location.pathname !== '/home') history.replaceState({ path: '/home' }, '', '/home');
+            if (currentAppState.isLoggedIn && window.location.pathname !== '/home') history.replaceState({path: '/home'}, '', '/home');
             break;
         case 'home':
             componentElement = HomePageComponent(currentAppState.currentUser);
@@ -135,8 +146,17 @@ function renderRouteByPath(path) {
                 componentElement = MessageDetailComponent(routeParam);
             } else {
                 console.warn(`App: Missing message ID for /message route. Redirecting to /cabinet.`);
-                history.replaceState({ path: '/cabinet' }, '', '/cabinet');
+                history.replaceState({path: '/cabinet'}, '', '/cabinet');
                 componentElement = CabinetComponent();
+            }
+            break;
+        case 'chatroom':
+            if (routeParam) {
+                componentElement = ChatRoomPageComponent(routeParam);
+            } else {
+                console.warn(`App: Missing room ID for /chat/room route. Redirecting to /home.`);
+                history.replaceState({path: '/home'}, '', '/home');
+                componentElement = HomePageComponent(currentAppState.currentUser);
             }
             break;
         // --- ADMIN ROUTE CASE ---
@@ -148,7 +168,7 @@ function renderRouteByPath(path) {
             } else {
                 // If a non-admin tries to access /admin, show an error or redirect
                 console.warn("Client-side block: Non-admin attempted to access /admin route.");
-                history.replaceState({ path: '/home' }, '', '/home');
+                history.replaceState({path: '/home'}, '', '/home');
                 componentElement = HomePageComponent(currentAppState.currentUser);
             }
             break;
@@ -209,7 +229,7 @@ function handleGlobalClick(event) {
             const selectRecipientButton = target.closest('[data-action="select-recipient"]');
             const userId = parseInt(selectRecipientButton.dataset.userId, 10);
             const username = selectRecipientButton.textContent;
-            setScriptoriumState({ recipient: { id: userId, username: username } });
+            setScriptoriumState({recipient: {id: userId, username: username}});
             return;
         }
         if (target.closest('[data-action="send-message"]')) {
@@ -225,7 +245,7 @@ function handleGlobalClick(event) {
         event.preventDefault();
         const path = targetLink.getAttribute('href');
         if (path !== window.location.pathname) {
-            history.pushState({ path: path }, '', path);
+            history.pushState({path: path}, '', path);
         }
         renderRouteByPath(path);
         return;
@@ -248,7 +268,7 @@ function handleGlobalClick(event) {
         const messageId = messageItemLink.dataset.messageId;
         if (messageId) {
             const path = `/message/${messageId}`;
-            history.pushState({ path: path }, '', path);
+            history.pushState({path: path}, '', path);
             renderRouteByPath(path);
         }
         return;
@@ -262,12 +282,12 @@ async function handleLogout() {
     console.log("App: Logout initiated...");
     await api.logoutUser(); // This just deletes the token from local storage
     setAuthState(false, null);
-    setScriptoriumState({ isOpen: false });
+    setScriptoriumState({isOpen: false});
     setProfilePaneState(false);
 
     // Redirect to login page
     const loginPath = '/login';
-    history.pushState({ path: loginPath }, '', loginPath);
+    history.pushState({path: loginPath}, '', loginPath);
     renderRouteByPath(loginPath);
 }
 
@@ -295,18 +315,22 @@ async function handleAuthFormSubmit(event) {
             if (result.success) {
                 setAuthState(true, result.user); // setAuthState now handles user data including location
                 nextPath = '/home';
-            } else { throw new Error(result.message || 'Login failed'); }
+            } else {
+                throw new Error(result.message || 'Login failed');
+            }
         } else if (form.id === 'register-form') {
             result = await api.registerUser(data.username, data.email, data.password);
             if (result.success) {
                 nextPath = '/login';
                 alert("Registration successful! Please log in.");
-            } else { throw new Error(result.message || 'Registration failed'); }
+            } else {
+                throw new Error(result.message || 'Registration failed');
+            }
         }
 
         if (nextPath) {
             if (nextPath !== window.location.pathname) {
-                history.pushState({ path: nextPath }, '', nextPath);
+                history.pushState({path: nextPath}, '', nextPath);
             }
             renderRouteByPath(nextPath);
         }
@@ -332,7 +356,7 @@ function handlePopstate(event) {
         path = event.state.path;
     } else {
         path = window.location.pathname;
-        history.replaceState({ path: path }, '', path);
+        history.replaceState({path: path}, '', path);
     }
     renderRouteByPath(path);
 }
@@ -362,7 +386,7 @@ async function initializeApp() {
         if (data && data.routeName) {
             const path = `/${data.routeName}`;
             if (path !== window.location.pathname) {
-                history.pushState({ path: path }, '', path);
+                history.pushState({path: path}, '', path);
             }
             renderRouteByPath(path);
         }
@@ -397,12 +421,12 @@ async function initializeApp() {
     }
 
     // Set initial states for overlays to be closed.
-    setScriptoriumState({ isOpen: false, recipient: null, subject: '', body: '' });
+    setScriptoriumState({isOpen: false, recipient: null, subject: '', body: ''});
     setProfilePaneState(false); // Ensure profile pane is closed on init
 
     // --- Initial Route Rendering ---
     const initialPath = window.location.pathname;
-    history.replaceState({ path: initialPath }, '', initialPath);
+    history.replaceState({path: initialPath}, '', initialPath);
     renderRouteByPath(initialPath);
     console.log("App: Initialization complete.");
 }

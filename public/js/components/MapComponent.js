@@ -2,10 +2,8 @@
  * public/js/components/MapComponent.js
  * Defines the Map component for displaying user locations.
  */
-// import L from 'leaflet'; // <<<--- REMOVE THIS LINE
 import * as api from '../api.js';
-import { getState, setScriptoriumState } from '../state.js';
-// import { publish } from '../pubsub.js';
+import {getState, setScriptoriumState} from '../state.js';
 
 /**
  * Creates and returns the root DOM element for the Map view.
@@ -15,12 +13,7 @@ import { getState, setScriptoriumState } from '../state.js';
  * @param {number} options.initialHeight - The initial height for the map container in pixels.
  * @returns {HTMLElement} The main container element for the Map.
  */
-export function MapComponent({ initialWidth = 800, initialHeight = 600 } = {}) {
-    // ... (rest of the component code remains the same, it will use the global L) ...
-    // For example, when it calls L.map(...), L will be from the global scope.
-    // ...
-    // Make sure all references to `L.` are still valid, e.g., `L.map`, `L.CRS.Simple`, `L.circleMarker`, etc.
-    // They should be, as Leaflet defines `L` globally when included via <script>.
+export function MapComponent({initialWidth = 800, initialHeight = 600} = {}) {
     const mapContainer = document.createElement('div');
     mapContainer.id = 'aristocrat-map-container';
     mapContainer.style.width = `${initialWidth}px`;
@@ -112,7 +105,7 @@ export function MapComponent({ initialWidth = 800, initialHeight = 600 } = {}) {
         if (!map) return;
         locations.forEach(loc => {
             if (typeof loc.x === 'number' && typeof loc.y === 'number') {
-                const marker = L.circleMarker([loc.y, loc.x], { // L is now global
+                const marker = L.circleMarker([loc.y, loc.x], {
                     radius: 7,
                     fillColor: '#fbbf24',
                     color: '#b45309',
@@ -127,11 +120,12 @@ export function MapComponent({ initialWidth = 800, initialHeight = 600 } = {}) {
                     offset: [0, -7]
                 });
 
+                // --- Popup Content Modification ---
                 let popupContentHTML = `
-                    <div class="p-1">
-                        <div class="font-semibold text-md text-stone-800 dark:text-stone-200 mb-1">${loc.name || 'Unnamed Location'}</div>
-                        <div class="text-xs text-stone-600 dark:text-stone-400">Type: ${loc.type || 'N/A'}</div>
-                `;
+                <div class="p-1">
+                    <div class="font-semibold text-md text-stone-800 dark:text-stone-200 mb-1">${loc.name || 'Unnamed Location'}</div>
+                    <div class="text-xs text-stone-600 dark:text-stone-400">Type: ${loc.type || 'N/A'}</div>
+            `;
                 if (loc.user) {
                     popupContentHTML += `<div class="text-xs text-stone-500 dark:text-stone-300">Owner: ${loc.user.username}</div>`;
                 }
@@ -140,27 +134,43 @@ export function MapComponent({ initialWidth = 800, initialHeight = 600 } = {}) {
                 }
 
                 const currentUser = getState('currentUser');
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'mt-2 flex flex-wrap gap-2';
+
+                // Send Message Button
                 if (loc.user && currentUser && loc.user.id !== currentUser.id) {
-                    const buttonId = `map-send-msg-btn-${loc.user.id}`;
-                    popupContentHTML += `
-                        <button id="${buttonId}"
-                                class="mt-2 bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold py-1 px-2 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                data-recipient-id="${loc.user.id}"
-                                data-recipient-username="${loc.user.username}"
-                                data-location-name="${loc.name || 'Unnamed Location'}">
-                            Send Message
-                        </button>
-                    `;
+                    buttonContainer.innerHTML += `
+                    <button id="map-send-msg-btn-${loc.user.id}"
+                            class="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-bold py-1 px-2 rounded focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                            data-recipient-id="${loc.user.id}"
+                            data-recipient-username="${loc.user.username}"
+                            data-location-name="${loc.name || 'Unnamed Location'}">
+                        Send Message
+                    </button>
+                `;
                 }
+
+                // Join Chat Button <<<--- ADD THIS BLOCK
+                if (loc.chatRoom && loc.chatRoom.id) {
+                    buttonContainer.innerHTML += `
+                    <a href="/chat/room/${loc.chatRoom.id}"
+                       data-route="chat/room/${loc.chatRoom.id}"
+                       class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1 px-2 rounded focus:outline-none focus:ring-1 focus:ring-green-500 no-underline">
+                        Join Chat
+                    </a>
+                `;
+                }
+
+                popupContentHTML += buttonContainer.outerHTML;
                 popupContentHTML += `</div>`;
-                marker.bindPopup(popupContentHTML, { minWidth: 180 });
+                marker.bindPopup(popupContentHTML, {minWidth: 180});
             } else {
                 console.warn('MapComponent: Location with invalid coordinates skipped:', loc);
             }
         });
     }
 
-    actualMapDiv.addEventListener('click', function(event) {
+    actualMapDiv.addEventListener('click', function (event) {
         let target = event.target;
         if (target.tagName === 'I' && target.parentElement.matches('button[data-recipient-id]')) {
             target = target.parentElement;
@@ -175,11 +185,11 @@ export function MapComponent({ initialWidth = 800, initialHeight = 600 } = {}) {
                 console.log(`MapComponent: Opening Scriptorium for User ID: ${recipientId} (${recipientUsername})`);
                 setScriptoriumState({
                     isOpen: true,
-                    recipient: { id: parseInt(recipientId, 10), username: recipientUsername },
+                    recipient: {id: parseInt(recipientId, 10), username: recipientUsername},
                     subject: `Regarding ${locationName}`,
                     body: `Greetings from the map,\n\nI am writing to you concerning your location, ${locationName}.\n\n`
                 });
-                if(map && map.closePopup) map.closePopup();
+                if (map && map.closePopup) map.closePopup();
             }
         }
     });
