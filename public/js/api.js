@@ -62,7 +62,8 @@ async function getData(url = '') {
             try {
                 const errorData = await response.json();
                 errorMsg = errorData.message || errorMsg;
-            } catch (e) { /* Ignore */ }
+            } catch (e) { /* Ignore */
+            }
             throw new Error(errorMsg);
         }
         return response.json(); // Assuming all GET responses are JSON
@@ -84,7 +85,8 @@ async function postData(url = '', data = {}) {
             try {
                 const errorData = await response.json();
                 errorMsg = errorData.message || errorMsg;
-            } catch (e) { /* Ignore */ }
+            } catch (e) { /* Ignore */
+            }
             throw new Error(errorMsg);
         }
         return response.json();
@@ -106,7 +108,8 @@ async function putData(url = '', data = {}) {
             try {
                 const errorData = await response.json();
                 errorMsg = errorData.message || errorMsg;
-            } catch (e) { /* Ignore */ }
+            } catch (e) { /* Ignore */
+            }
             throw new Error(errorMsg);
         }
         return response.json();
@@ -136,7 +139,7 @@ async function getMyProfile() {
 async function loginUser(email, password) {
     console.log(`API: Attempting login for ${email}...`);
     // Login doesn't send an auth header, it creates one.
-    const response = await postData('/auth/login', { email, password });
+    const response = await postData('/auth/login', {email, password});
     if (response.success && response.token) {
         saveToken(response.token);
     }
@@ -190,7 +193,7 @@ async function getUsers() {
 
 async function sendMessage(recipientId, subject, body) {
     console.log('API: Sending message...');
-    return await postData('/api/messages', { recipientId, subject, body });
+    return await postData('/api/messages', {recipientId, subject, body});
 }
 
 async function getInboxMessages() {
@@ -220,7 +223,7 @@ async function getLocations() {
  */
 async function checkLocationName(name) {
     console.log(`API: Checking availability of location name "${name}"...`);
-    return await postData('/api/locations/check-name', { name });
+    return await postData('/api/locations/check-name', {name});
 }
 
 async function updateUserProfile(profileData) {
@@ -244,7 +247,8 @@ async function deleteData(url = '') {
             try {
                 const errorData = await response.json();
                 errorMsg = errorData.message || errorMsg;
-            } catch (e) { /* Ignore if body isn't JSON */ }
+            } catch (e) { /* Ignore if body isn't JSON */
+            }
             const error = new Error(errorMsg);
             error.status = response.status;
             throw error;
@@ -254,7 +258,7 @@ async function deleteData(url = '') {
         if (contentType && contentType.indexOf("application/json") !== -1) {
             return response.json();
         } else {
-            return { success: true }; // Assume success if no JSON body and status is ok
+            return {success: true}; // Assume success if no JSON body and status is ok
         }
     } catch (error) {
         console.error(`API DELETE error for ${url}:`, error);
@@ -281,7 +285,7 @@ async function getAllUsersForAdmin() {
  */
 async function updateUserRole(userId, isAdmin) {
     console.log(`API: (Admin) Setting isAdmin=${isAdmin} for user ID ${userId}...`);
-    return await putData(`/api/admin/users/${userId}/role`, { isAdmin });
+    return await putData(`/api/admin/users/${userId}/role`, {isAdmin});
 }
 
 /**
@@ -303,6 +307,17 @@ async function deleteUser(userId) {
     return await deleteData(`/api/admin/users/${userId}`);
 }
 
+// --- CHAT API FUNCTIONS ---
+
+async function getChatRooms() {
+    console.log('API: Fetching all chat rooms...');
+    return await getData('/api/chat/rooms');
+}
+
+async function getChatRoomMessages(roomId) {
+    console.log(`API: Fetching messages for room ${roomId}...`);
+    return await getData(`/api/chat/rooms/${roomId}/messages`);
+}
 
 export {
     getToken,
@@ -322,4 +337,6 @@ export {
     updateUserRole,
     deleteUser,
     deleteMyProfile,
+    getChatRooms,
+    getChatRoomMessages
 };
