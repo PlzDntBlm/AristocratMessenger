@@ -5,7 +5,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken'); // Import jsonwebtoken
-const { User, Location, sequelize} = require('../models');
+const {User, Location, sequelize, ChatRoom} = require('../models');
 const router = express.Router();
 const saltRounds = 10;
 const MIN_DISTANCE_SQUARED = 25; // Minimum distance of 5km, squared for efficiency
@@ -85,10 +85,17 @@ router.post('/register', async (req, res) => {
             description: `The home of ${username}.`
         }, { transaction: t });
 
+        // Create the ChatRoom for this new Location
+        await ChatRoom.create({
+            LocationId: newLocation.id,
+            name: `The Great Hall of ${locationName}`,
+            description: `A place for discourse at ${locationName}.`
+        }, {transaction: t});
+
         // If everything was successful, commit the transaction
         await t.commit();
 
-        console.log("New user and location created:", newUser.username, locationName);
+        console.log("New user, location, and chat room created:", newUser.username, locationName);
         res.status(201).json({ success: true, message: `Lord ${newUser.username} has established their seat at ${locationName}! You may now log in.` });
 
     } catch (error) {
