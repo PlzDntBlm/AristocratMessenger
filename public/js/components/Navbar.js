@@ -2,7 +2,7 @@
  * public/js/components/Navbar.js
  * Defines the Navbar component function.
  */
-import { getState } from '../state.js';
+import {getState} from '../state.js';
 
 /**
  * Creates and returns the Navbar DOM element based on current state.
@@ -51,7 +51,7 @@ export function NavbarComponent() {
         authHTML = `
             ${adminLink}
             <span class="text-gray-300 px-3 py-2 text-sm hidden md:inline">Welcome, ${state.currentUser.username || 'User'}!</span>
-            <a href="/profile" data-route="profile" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Profile</a>
+            <a href="/home" data-route="home" class="text-white hover:text-gray-300 px-3 py-2 rounded-md text-sm font-medium">Home</a>
             <button id="logout-button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm">Logout</button>
         `;
     } else {
