@@ -117,7 +117,7 @@ function renderRouteByPath(path) {
         }
     }
 
-    const protectedRoutes = ['home', 'cabinet', 'scriptorium', 'message', 'map']; // Added 'map'
+    const protectedRoutes = ['home', 'cabinet', 'scriptorium', 'message', 'map', 'chatroom']; // Added 'map'
     if (protectedRoutes.includes(routeName) && !currentAppState.isLoggedIn) {
         console.warn(`App: Access to protected route ${normalizedPath} denied. Redirecting to /login.`);
         const loginPath = '/login';

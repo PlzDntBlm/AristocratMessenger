@@ -48,8 +48,12 @@ export function ChatRoomPageComponent(roomId) {
     const input = container.querySelector('#chatroom-message-input');
 
     function renderMessage(message) {
+        // Ensure message and room IDs are numbers for correct comparison
+        const messageRoomId = parseInt(message.ChatRoomId, 10);
+        const componentRoomId = parseInt(roomId, 10);
+
         // Only render messages for the current room
-        if (message.ChatRoomId != roomId) return;
+        if (messageRoomId !== componentRoomId) return; // <<< FIX: Changed to a strict, type-safe comparison
 
         const currentUserId = getState().currentUser?.id;
         const isMyMessage = message.author.id === currentUserId;
@@ -71,6 +75,7 @@ export function ChatRoomPageComponent(roomId) {
 
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
+
 
     async function initializeRoom() {
         socketService.connect(); // Ensure we have a connection
