@@ -1,9 +1,10 @@
 @import "tailwindcss";
+
 @config "../tailwind.config.js";
 
 @theme {
     /* Font Families*/
-    --font-heading: "MedievalSharp", serif;
+    --font-heading: "Canterbury", serif;
     --font-body: "Cormorant Garamond", serif;
 
     /* Light Theme Colors */
@@ -30,36 +31,46 @@
 }
 
 @layer base {
+    @font-face {
+        font-family: 'Canterbury';
+        src: url('../fonts/Canterbury.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }
+
     body {
-        /* Apply base fonts and colors */
-        @apply font-body bg-background text-text-primary dark:bg-dark-background dark:text-dark-text-primary transition-colors duration-300;
+        /* The font-family is set directly, so @apply is not needed */
+        font-family: var(--font-body);
+        @apply bg-background text-text-primary dark:bg-dark-background dark:text-dark-text-primary transition-colors duration-300;
     }
 
     h1, h2, h3, h4, h5, h6 {
-        @apply font-heading;
+        /* The font-family is set directly, so @apply is not needed */
+        font-family: var(--font-heading);
     }
 
-    /* Style for other common elements */
     hr, .border-themed {
         @apply border-border-light dark:border-border-dark;
     }
 }
 
-/* ... (existing content) ... */
-
 @layer components {
     .tab-item {
         @apply px-4 py-2 text-text-secondary dark:text-dark-text-secondary cursor-pointer border-b-2 border-transparent;
     }
+
     .tab-item.active {
         @apply text-accent dark:text-accent font-bold border-accent dark:border-accent;
     }
+
     .form-input {
         @apply w-full p-2 border border-border-color dark:border-dark-border-color rounded bg-surface dark:bg-dark-surface focus:ring-accent focus:border-accent;
     }
+
     .btn-accent {
         @apply bg-accent hover:bg-accent-hover text-white font-bold py-2 px-4 rounded shadow focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50 disabled:cursor-not-allowed;
     }
+
     .btn-secondary {
         @apply bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded shadow focus:outline-none focus:ring-2 focus:ring-gray-400;
     }
