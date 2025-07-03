@@ -59,4 +59,26 @@ router.get('/rooms/:roomId/messages', isAuthenticated, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/chat/rooms/:roomId
+ * Fetches details for a single chat room.
+ */
+router.get('/rooms/:roomId', isAuthenticated, async (req, res) => { // <<<--- ADD THIS ENTIRE ROUTE
+    const {roomId} = req.params;
+    try {
+        const room = await ChatRoom.findByPk(roomId, {
+            attributes: ['id', 'name', 'description'],
+        });
+
+        if (!room) {
+            return res.status(404).json({success: false, message: 'Chat room not found.'});
+        }
+
+        res.json({success: true, data: room});
+    } catch (error) {
+        console.error(`Error fetching chat room ${roomId}:`, error);
+        res.status(500).json({success: false, message: 'Failed to fetch chat room details.'});
+    }
+});
+
 module.exports = router;

@@ -4,8 +4,8 @@
  */
 import * as api from '../api.js';
 import {getState} from '../state.js';
-import * as socketService from '../socketService.js';
-import {subscribe, publish} from '../pubsub.js';
+import socketService from '../socketService.js';
+import {subscribe} from '../pubsub.js';
 
 function formatMessageDate(dateString) {
     if (!dateString) return '';
@@ -19,7 +19,6 @@ function formatMessageDate(dateString) {
 export function ChatRoomPageComponent(roomId) {
     const container = document.createElement('div');
     container.id = `component-chatroom-${roomId}`;
-    // Added h-full and flex container for better layout control
     container.className = 'p-4 md:p-6 h-[calc(100vh-200px)] flex flex-col';
 
     let messageSubscription = null;
@@ -27,33 +26,35 @@ export function ChatRoomPageComponent(roomId) {
     container.innerHTML = `
         <div id="chatroom-header" class="mb-4 pb-3 border-b border-border-color dark:border-dark-border-color">
             <h2 id="chatroom-name" class="text-2xl font-semibold text-text-primary dark:text-dark-text-primary">Loading Room...</h2>
-            <a href="/home" data-route="home" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">&laquo; Back to Map</a>
+            
+            <p id="chatroom-description" class="text-sm text-text-secondary dark:text-dark-text-secondary"></p>
+            
+            <a href="/home" data-route="home" class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 mt-1 inline-block">&laquo; Back to Map</a>
         </div>
 
         <div id="chatroom-messages-container" class="flex-grow overflow-y-auto mb-4 p-2 bg-white dark:bg-stone-900 rounded shadow-inner">
-            <p class="text-center text-text-secondary dark:text-dark-text-secondary">Fetching message history...</p>
+            <p class="text-center text-text-secondary dark:text-dark-text-secondary">Awaiting connection...</p>
         </div>
 
         <div id="chatroom-form-container" class="mt-auto">
             <form id="chatroom-send-form" class="flex gap-2">
-                <input type="text" id="chatroom-message-input" class="form-input flex-grow" placeholder="Type your message..." autocomplete="off" required>
-                <button type="submit" class="btn-accent">Send</button>
+                <input type="text" id="chatroom-message-input" class="form-input flex-grow" placeholder="Type your message..." autocomplete="off" required disabled>
+                <button type="submit" class="btn-accent" disabled>Send</button>
             </form>
         </div>
     `;
 
     const messagesContainer = container.querySelector('#chatroom-messages-container');
     const roomNameHeader = container.querySelector('#chatroom-name');
+    const roomDescription = container.querySelector('#chatroom-description');
     const form = container.querySelector('#chatroom-send-form');
     const input = container.querySelector('#chatroom-message-input');
+    const sendButton = container.querySelector('button[type="submit"]');
 
     function renderMessage(message) {
-        // Ensure message and room IDs are numbers for correct comparison
         const messageRoomId = parseInt(message.ChatRoomId, 10);
         const componentRoomId = parseInt(roomId, 10);
-
-        // Only render messages for the current room
-        if (messageRoomId !== componentRoomId) return; // <<< FIX: Changed to a strict, type-safe comparison
+        if (messageRoomId !== componentRoomId) return;
 
         const currentUserId = getState().currentUser?.id;
         const isMyMessage = message.author.id === currentUserId;
@@ -76,22 +77,35 @@ export function ChatRoomPageComponent(roomId) {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-
     async function initializeRoom() {
-        socketService.connect(); // Ensure we have a connection
-        socketService.joinRoom(roomId);
-
-        // Subscribe to new messages for this component instance
-        messageSubscription = subscribe('chatMessageReceived', renderMessage);
-
         try {
-            const messagesResponse = await api.getChatRoomMessages(roomId);
+            await socketService.connect();
+            socketService.joinRoom(roomId);
+
+            input.disabled = false;
+            sendButton.disabled = false;
+            messagesContainer.innerHTML = '';
+
+            messageSubscription = subscribe('chatMessageReceived', renderMessage);
+
+            const [detailsResponse, messagesResponse] = await Promise.all([
+                api.getChatRoomDetails(roomId),
+                api.getChatRoomMessages(roomId)
+            ]);
+
+            if (detailsResponse.success) {
+                roomNameHeader.textContent = detailsResponse.data.name;
+                roomDescription.textContent = detailsResponse.data.description;
+            } else {
+                roomNameHeader.textContent = 'Unknown Room';
+            }
+
             if (messagesResponse.success) {
-                messagesContainer.innerHTML = '';
                 messagesResponse.data.forEach(renderMessage);
             } else {
                 messagesContainer.innerHTML = `<p class="text-red-500">Could not load message history.</p>`;
             }
+
         } catch (error) {
             console.error('Error initializing chat room:', error);
             roomNameHeader.textContent = 'Error';
@@ -104,13 +118,10 @@ export function ChatRoomPageComponent(roomId) {
         const content = input.value.trim();
         if (content) {
             socketService.sendMessage(roomId, content);
-            input.value = ''; // Clear input after sending
+            input.value = '';
         }
     });
 
-    // --- Component Lifecycle Cleanup ---
-    // We need to clean up when the component is "destroyed" (i.e., when navigating away)
-    // We'll use a little trick by listening for when the container is removed from the DOM.
     const observer = new MutationObserver((mutations) => {
         if (!document.body.contains(container)) {
             console.log(`ChatRoom ${roomId}: Component removed from DOM. Cleaning up.`);
@@ -118,11 +129,10 @@ export function ChatRoomPageComponent(roomId) {
             if (messageSubscription) {
                 messageSubscription.unsubscribe();
             }
-            observer.disconnect(); // Stop observing
+            observer.disconnect();
         }
     });
 
-    // Start observing the parent of the container for child removal
     observer.observe(document.getElementById('content'), {childList: true});
 
     initializeRoom();

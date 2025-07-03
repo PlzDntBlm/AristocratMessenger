@@ -309,6 +309,11 @@ async function deleteUser(userId) {
 
 // --- CHAT API FUNCTIONS ---
 
+async function getChatRoomDetails(roomId) {
+    console.log(`API: Fetching details for room ${roomId}...`);
+    return await getData(`/api/chat/rooms/${roomId}`);
+}
+
 async function getChatRooms() {
     console.log('API: Fetching all chat rooms...');
     return await getData('/api/chat/rooms');
@@ -338,5 +343,6 @@ export {
     deleteUser,
     deleteMyProfile,
     getChatRooms,
-    getChatRoomMessages
+    getChatRoomMessages,
+    getChatRoomDetails,
 };
