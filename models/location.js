@@ -11,9 +11,14 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      Location.belongsTo(models.User, { // <<< --- ADD THIS ASSOCIATION
+      Location.belongsTo(models.User, {
         foreignKey: 'UserId',
         as: 'user', // This alias is used when you query Location and want to include User
+      });
+      // A Location has one designated ChatRoom
+      Location.hasOne(models.ChatRoom, {
+        foreignKey: 'LocationId',
+        as: 'chatRoom',
       });
     }
   }

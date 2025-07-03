@@ -24,6 +24,11 @@ module.exports = (sequelize, DataTypes) => {
                 foreignKey: 'UserId',
                 as: 'location',
             });
+            // A User can author many ChatMessages
+            User.hasMany(models.ChatMessage, {
+                foreignKey: 'UserId',
+                as: 'chatMessages'
+            });
         }
     }
 
