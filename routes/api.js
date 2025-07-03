@@ -283,9 +283,6 @@ router.put('/users/profile', isAuthenticated, async (req, res) => {
         user.email = email;
         await user.save();
 
-        // Update session username in case it changed
-        req.session.username = user.username;
-
         // Fetch the full updated user profile to send back, including location
         const updatedUser = await User.findByPk(userId, {
             attributes: ['id', 'username', 'email', 'createdAt'],
