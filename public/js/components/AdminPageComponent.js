@@ -3,12 +3,12 @@
  * Defines the Admin Page for user management.
  */
 import * as api from '../api.js';
-import { getState } from '../state.js';
+import {getState} from '../state.js';
 
 export function AdminPageComponent() {
     const container = document.createElement('div');
     container.id = 'component-admin';
-    container.className = 'p-4 md:p-6';
+    container.className = 'w-full';
 
     let userCache = []; // To hold the list of users
 

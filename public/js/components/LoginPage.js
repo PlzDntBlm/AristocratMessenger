@@ -10,7 +10,8 @@
 export function LoginPageComponent() {
     // Create the main container div
     const container = document.createElement('div');
-    container.id = 'component-login'; // Optional ID for styling/selection
+    container.id = 'component-login'; // Optional ID for styling/
+    container.className = 'w-full';
 
     // Set the inner HTML structure for the login page
     container.innerHTML = `

@@ -3,8 +3,8 @@
  * Defines the Message Detail component for displaying a single message.
  */
 import * as api from '../api.js';
-import { getState } from '../state.js';
-import { publish } from '../pubsub.js'; // For potential future actions like "reply"
+import {getState} from '../state.js';
+import {publish} from '../pubsub.js'; // For potential future actions like "reply"
 
 /**
  * Formats a date string or Date object into a more readable format.
@@ -33,7 +33,7 @@ function formatDate(dateInput) {
 export function MessageDetailComponent(messageId) {
     const container = document.createElement('div');
     container.id = `component-message-detail-${messageId}`;
-    container.className = 'p-4 md:p-6';
+    container.className = 'w-full';
 
     const loadingMessage = document.createElement('p');
     loadingMessage.className = 'text-stone-600 dark:text-stone-400';
@@ -55,7 +55,7 @@ export function MessageDetailComponent(messageId) {
                 // We might want to refresh the cabinet list or update unread count.
                 // For now, we can publish an event that CabinetComponent *could* listen to.
                 if (message.recipientId === currentUserId) {
-                    publish('messageRead', { messageId: message.id });
+                    publish('messageRead', {messageId: message.id});
                 }
             } else {
                 renderError(response.message || 'Could not load message.');
@@ -147,8 +147,8 @@ export function MessageDetailComponent(messageId) {
             // Navigate back to the cabinet, or use history.back() if appropriate.
             // For SPA, explicit navigation is often better.
             // This relies on app.js to have 'cabinet' route registered
-            history.pushState({ route: 'cabinet' }, '', '/cabinet');
-            publish('navigateToRoute', { routeName: 'cabinet' }); // app.js should listen to this
+            history.pushState({route: 'cabinet'}, '', '/cabinet');
+            publish('navigateToRoute', {routeName: 'cabinet'}); // app.js should listen to this
         });
         container.appendChild(backButton);
     }
@@ -172,8 +172,8 @@ export function MessageDetailComponent(messageId) {
         backButton.className = 'mt-4 ml-2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded';
         backButton.textContent = 'Back to Cabinet';
         backButton.addEventListener('click', () => {
-            history.pushState({ route: 'cabinet' }, '', '/cabinet');
-            publish('navigateToRoute', { routeName: 'cabinet' });
+            history.pushState({route: 'cabinet'}, '', '/cabinet');
+            publish('navigateToRoute', {routeName: 'cabinet'});
         });
 
         container.appendChild(errorP);

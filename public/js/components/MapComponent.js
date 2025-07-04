@@ -13,20 +13,22 @@ import {getState, setScriptoriumState} from '../state.js';
  * @param {number} options.initialHeight - The initial height for the map container in pixels.
  * @returns {HTMLElement} The main container element for the Map.
  */
-export function MapComponent({initialWidth = 800, initialHeight = 600} = {}) {
+export function MapComponent({initialWidth = 100, initialHeight = 100} = {}) {
     const mapContainer = document.createElement('div');
     mapContainer.id = 'aristocrat-map-container';
-    mapContainer.style.width = `${initialWidth}px`;
+    //mapContainer.style.width = `${initialWidth}px`;
     mapContainer.style.height = `${initialHeight}px`;
     mapContainer.style.border = '2px solid #78716c';
     mapContainer.style.backgroundColor = '#e7e5e4';
-    mapContainer.style.margin = '20px auto';
+    mapContainer.style.margin = '20px';
     mapContainer.style.position = 'relative';
+    mapContainer.className = 'grow flex';
 
     const actualMapDiv = document.createElement('div');
     actualMapDiv.id = 'aristocrat-leaflet-map';
     actualMapDiv.style.width = '100%';
     actualMapDiv.style.height = '100%';
+    actualMapDiv.className = '';
     mapContainer.appendChild(actualMapDiv);
 
     const loadingOverlay = document.createElement('div');

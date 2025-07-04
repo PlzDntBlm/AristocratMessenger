@@ -3,7 +3,7 @@
  * Defines the Cabinet (view messages) component, allowing users to see their inbox and outbox.
  */
 import * as api from '../api.js';
-import { publish, subscribe } from '../pubsub.js';
+import {publish, subscribe} from '../pubsub.js';
 
 /**
  * Creates and returns the root DOM element for the Letter Cabinet page.
@@ -13,7 +13,7 @@ import { publish, subscribe } from '../pubsub.js';
 export function CabinetComponent() {
     const container = document.createElement('div');
     container.id = 'component-cabinet';
-    container.className = 'p-4 md:p-6';
+    container.className = 'w-full';
 
     const header = document.createElement('h2');
     header.className = 'text-3xl font-semibold text-stone-700 dark:text-stone-300 mb-6 border-b pb-3 dark:border-stone-600';

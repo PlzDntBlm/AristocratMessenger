@@ -2,14 +2,14 @@
  * public/js/components/HomePage.js
  * Defines the HomePage component function.
  */
-import { MapComponent } from './MapComponent.js';
-import { ProfilePaneComponent } from './ProfilePaneComponent.js';
-import { getState } from '../state.js';
+import {MapComponent} from './MapComponent.js';
+import {ProfilePaneComponent} from './ProfilePaneComponent.js';
+import {getState} from '../state.js';
 
 export function HomePageComponent(user) {
     const container = document.createElement('div');
     container.id = 'component-home';
-    container.className = 'space-y-8 relative';
+    container.className = 'flex flex-col w-full';
 
     const appState = getState();
 
@@ -76,13 +76,13 @@ export function HomePageComponent(user) {
 
     // Map Section
     const mapSection = document.createElement('div');
-    mapSection.className = 'mt-8';
+    mapSection.className = 'mt-8 grow flex flex-col min-h-100';
     const mapHeader = document.createElement('h3');
     mapHeader.className = 'text-2xl font-semibold text-text-primary dark:text-dark-text-primary mb-4';
     mapHeader.textContent = 'A Window to the Realm';
     mapSection.appendChild(mapHeader);
 
-    const mapElement = MapComponent({ initialWidth: 800, initialHeight: 600 });
+    const mapElement = MapComponent({initialWidth: 100, initialHeight: 100});
     mapSection.appendChild(mapElement);
     container.appendChild(mapSection);
 

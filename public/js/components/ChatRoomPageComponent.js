@@ -19,7 +19,7 @@ function formatMessageDate(dateString) {
 export function ChatRoomPageComponent(roomId) {
     const container = document.createElement('div');
     container.id = `component-chatroom-${roomId}`;
-    container.className = 'p-4 md:p-6 h-[calc(100vh-200px)] flex flex-col';
+    container.className = 'h-[calc(100vh-200px)] w-full flex flex-col';
 
     let messageSubscription = null;
 
