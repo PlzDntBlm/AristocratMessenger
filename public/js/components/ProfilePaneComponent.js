@@ -107,7 +107,7 @@ export function ProfilePaneComponent() {
         paneContent.innerHTML = `
             <div id="profile-edit-error" class="text-red-500 text-sm mb-2"></div>
             <div class="text-center mb-4">
-                <img id="profile-pic-preview" src="${currentUser.profilePictureUrl || 'https://via.placeholder.com/150/stone/stone'}" alt="Profile Picture Preview" class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-stone-200 dark:border-stone-600">
+                <img id="profile-pic-preview" src="${currentUser.profilePictureUrl || '/images/default-avatar.png'}" alt="Profile Picture Preview" class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-stone-200 dark:border-stone-600">
                 <label for="profile-pic-upload" class="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
                     Change Picture
                     <input type="file" id="profile-pic-upload" class="hidden" accept="image/*">
@@ -239,7 +239,7 @@ export function ProfilePaneComponent() {
         paneTitle.textContent = currentUser.location ? `${currentUser.username} of ${currentUser.location.name}` : `${currentUser.username}'s Profile`;
         paneContent.innerHTML = `
             <div class="text-center mb-4">
-                 <img src="${currentUser.profilePictureUrl || 'https://via.placeholder.com/150/stone/stone'}" alt="Profile Picture" class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-stone-200 dark:border-stone-600">
+                 <img src="${currentUser.profilePictureUrl || '/images/default-avatar.png'}" alt="Profile Picture" class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-stone-200 dark:border-stone-600">
             </div>
             <div class="mb-3">
                 <h3 class="text-lg font-semibold text-stone-700 dark:text-stone-300">${currentUser.username}</h3>

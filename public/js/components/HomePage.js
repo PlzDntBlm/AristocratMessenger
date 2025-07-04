@@ -19,16 +19,15 @@ export function HomePageComponent(user) {
     if (appState.isLoggedIn) {
         const profileCrest = document.createElement('div');
         profileCrest.id = 'profile-crest-button';
-        profileCrest.className = `fixed top-20 left-4 z-30 p-2 bg-accent dark:bg-accent-hover text-white rounded-full shadow-lg cursor-pointer hover:bg-accent-hover transition-colors duration-200
-        `;
+        profileCrest.className = `fixed top-20 left-4 z-30 bg-accent dark:bg-accent-hover text-white rounded-full shadow-lg cursor-pointer hover:bg-accent-hover transition-colors duration-200 w-20 h-20 flex items-center justify-center overflow-hidden border-2 border-yellow-400`;
         profileCrest.title = 'View Profile';
 
+        const profilePicUrl = appState.currentUser.profilePictureUrl || '/images/default-avatar.png';
         // Placeholder Shield Icon (SVG)
         profileCrest.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 md:w-8 md:h-8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-            </svg>
+            <img src="${profilePicUrl}" alt="View Profile" class="w-full h-full object-cover">
         `;
+
         // Add slight glow on hover via CSS (can be done in output.css or inline if simple)
         // For now, Tailwind hover:bg-yellow-600 handles visual feedback.
         // A 'glow' might be: hover:shadow-yellow-500/50 or custom CSS.

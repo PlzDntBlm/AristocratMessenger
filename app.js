@@ -36,6 +36,7 @@ app.use('/libs/leaflet', express.static(path.join(__dirname, 'node_modules/leafl
 
 // Serve uploaded files from the 'uploads' directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/images', express.static(path.join(__dirname, 'images')));
 
 // Body Parsers
 app.use(express.json());
