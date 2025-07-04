@@ -3,7 +3,7 @@ require('dotenv').config(); // Load environment variables
 
 // This script only runs the migration command.
 // It uses the environment variables loaded from your .env file.
-const migrationCommand = 'npx sequelize-cli db:migrate';
+const migrationCommand = 'npx sequelize-cli db:migrate --env production';
 
 console.log('Running database migrations...');
 

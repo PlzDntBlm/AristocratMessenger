@@ -18,7 +18,12 @@ const chatRouter = require('./routes/chat');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: "https://cc231035-10823.node.fhstp.cc",
+        methods: ["GET", "POST"]
+    }
+});
 
 const PORT = process.env.PORT || 3000;
 

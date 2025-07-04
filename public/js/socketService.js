@@ -25,7 +25,7 @@ const socketService = (() => {
                 return reject(new Error('No auth token'));
             }
 
-            const newSocket = io({
+            const newSocket = io("wss://cc231035-10823.node.fhstp.cc:10823", {
                 auth: {token}
             });
 
