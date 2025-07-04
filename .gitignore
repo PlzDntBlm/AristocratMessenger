@@ -23,3 +23,6 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 /.idea/discord.xml
+
+#user uploaded files
+uploads/

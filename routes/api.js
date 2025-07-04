@@ -7,6 +7,33 @@ const router = express.Router();
 const {User, Message, Location, ChatRoom} = require('../models');
 const {isAuthenticated, isAdministrator} = require('../middleware/authMiddleware');
 const {Op} = require('sequelize');
+const multer = require('multer');
+const {v4: uuidv4} = require('uuid');
+const fs = require('fs');
+
+// --- Multer Configuration for Profile Pictures ---
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        const fileExtension = path.extname(file.originalname);
+        const uniqueFileName = `${uuidv4()}${fileExtension}`;
+        cb(null, uniqueFileName);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {fileSize: 1024 * 1024 * 5}, // 5MB file size limit
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    }
+});
 
 /**
  * GET /api/users/me
@@ -56,6 +83,141 @@ router.get('/users', isAuthenticated, async (req, res) => {
     } catch (error) {
         console.error('Error fetching users:', error);
         res.status(500).json({success: false, message: 'Failed to fetch users.'});
+    }
+});
+
+/**
+ * PUT /api/users/profile
+ * Allows a logged-in user to update their own profile (username, email).
+ */
+router.put('/users/profile', isAuthenticated, async (req, res) => {
+    const {username, email} = req.body;
+    const userId = req.user.id;
+
+    // Basic validation
+    if (!username || !email) {
+        return res.status(400).json({success: false, message: 'Username and email are required.'});
+    }
+
+    try {
+        // Check if the new email is already taken by ANOTHER user
+        const existingEmailUser = await User.findOne({
+            where: {
+                email: email,
+                id: {[Op.ne]: userId} // Op.ne means "not equal to"
+            }
+        });
+
+        if (existingEmailUser) {
+            return res.status(409).json({success: false, message: 'This email is already in use by another account.'});
+        }
+
+        const user = await User.findByPk(userId);
+        if (!user) {
+            // This case should be rare if isAuthenticated middleware is working
+            return res.status(404).json({success: false, message: 'User not found.'});
+        }
+
+        // Update user fields
+        user.username = username;
+        user.email = email;
+        await user.save();
+
+        // Fetch the full updated user profile to send back, including location
+        const updatedUser = await User.findByPk(userId, {
+            attributes: ['id', 'username', 'email', 'createdAt'],
+            include: [{
+                model: Location,
+                as: 'location',
+                attributes: ['name', 'x', 'y', 'type', 'description']
+            }]
+        });
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully!',
+            user: updatedUser
+        });
+
+    } catch (error) {
+        console.error('Error updating user profile:', error);
+        res.status(500).json({success: false, message: 'An error occurred while updating your profile.'});
+    }
+});
+
+/**
+ * DELETE /api/users/profile
+ * Allows a logged-in user to soft-delete their own account.
+ */
+router.delete('/users/profile', isAuthenticated, async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const userToDelete = await User.findByPk(userId);
+
+        if (!userToDelete) {
+            // Should be impossible if isAuthenticated passed, but good practice
+            return res.status(404).json({success: false, message: 'User not found.'});
+        }
+
+        // Soft delete the user
+        await userToDelete.destroy();
+
+        // Note: We don't need to invalidate the JWT token on the server for this.
+        // The client will be responsible for deleting the token and logging the user out.
+        // Any future use of the old token will fail to find a user (since paranoid queries exclude deleted ones).
+
+        res.json({success: true, message: 'Your account has been successfully deleted.'});
+
+    } catch (error) {
+        console.error(`Error soft-deleting user ${userId}:`, error);
+        res.status(500).json({success: false, message: 'An error occurred while deleting your account.'});
+    }
+});
+
+/**
+ * PUT /api/users/profile/picture
+ * Allows a logged-in user to upload or update their profile picture.
+ */
+router.put('/users/profile/picture', isAuthenticated, upload.single('profilePicture'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({success: false, message: 'No file uploaded.'});
+    }
+
+    const userId = req.user.id;
+    const newImagePath = `/uploads/${req.file.filename}`;
+
+    try {
+        const user = await User.findByPk(userId);
+        if (!user) {
+            // This case is unlikely if isAuthenticated works, but good for safety
+            fs.unlinkSync(req.file.path); // Clean up uploaded file
+            return res.status(404).json({success: false, message: 'User not found.'});
+        }
+
+        // If an old picture exists, delete it from the server
+        if (user.profilePictureUrl) {
+            const oldImagePath = path.join(__dirname, '..', user.profilePictureUrl);
+            if (fs.existsSync(oldImagePath)) {
+                fs.unlinkSync(oldImagePath);
+            }
+        }
+
+        // Update user's profile picture URL in the database
+        user.profilePictureUrl = newImagePath;
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Profile picture updated successfully!',
+            filePath: newImagePath
+        });
+
+    } catch (error) {
+        console.error('Error updating profile picture:', error);
+        // Clean up the newly uploaded file if there's an error
+        fs.unlinkSync(req.file.path);
+        res.status(500).json({success: false, message: 'An error occurred while updating the profile picture.'});
     }
 });
 
@@ -250,95 +412,6 @@ router.get('/locations', async (req, res) => { // <-- isAuthenticated has been r
     } catch (error) {
         console.error('Error fetching locations:', error);
         res.status(500).json({success: false, message: 'Failed to fetch locations.'});
-    }
-});
-
-/**
- * PUT /api/users/profile
- * Allows a logged-in user to update their own profile (username, email).
- */
-router.put('/users/profile', isAuthenticated, async (req, res) => {
-    const {username, email} = req.body;
-    const userId = req.user.id;
-
-    // Basic validation
-    if (!username || !email) {
-        return res.status(400).json({success: false, message: 'Username and email are required.'});
-    }
-
-    try {
-        // Check if the new email is already taken by ANOTHER user
-        const existingEmailUser = await User.findOne({
-            where: {
-                email: email,
-                id: {[Op.ne]: userId} // Op.ne means "not equal to"
-            }
-        });
-
-        if (existingEmailUser) {
-            return res.status(409).json({success: false, message: 'This email is already in use by another account.'});
-        }
-
-        const user = await User.findByPk(userId);
-        if (!user) {
-            // This case should be rare if isAuthenticated middleware is working
-            return res.status(404).json({success: false, message: 'User not found.'});
-        }
-
-        // Update user fields
-        user.username = username;
-        user.email = email;
-        await user.save();
-
-        // Fetch the full updated user profile to send back, including location
-        const updatedUser = await User.findByPk(userId, {
-            attributes: ['id', 'username', 'email', 'createdAt'],
-            include: [{
-                model: Location,
-                as: 'location',
-                attributes: ['name', 'x', 'y', 'type', 'description']
-            }]
-        });
-
-        res.json({
-            success: true,
-            message: 'Profile updated successfully!',
-            user: updatedUser
-        });
-
-    } catch (error) {
-        console.error('Error updating user profile:', error);
-        res.status(500).json({success: false, message: 'An error occurred while updating your profile.'});
-    }
-});
-
-/**
- * DELETE /api/users/profile
- * Allows a logged-in user to soft-delete their own account.
- */
-router.delete('/users/profile', isAuthenticated, async (req, res) => {
-    const userId = req.user.id;
-
-    try {
-        const userToDelete = await User.findByPk(userId);
-
-        if (!userToDelete) {
-            // Should be impossible if isAuthenticated passed, but good practice
-            return res.status(404).json({success: false, message: 'User not found.'});
-        }
-
-        // Soft delete the user
-        await userToDelete.destroy();
-
-        // Note: We don't need to invalidate the JWT token on the server for this.
-        // The client will be responsible for deleting the token and logging the user out.
-        // Any future use of the old token will fail to find a user (since paranoid queries exclude deleted ones).
-
-        res.json({success: true, message: 'Your account has been successfully deleted.'});
-
-    } catch (error) {
-        console.error(`Error soft-deleting user ${userId}:`, error);
-        res.status(500).json({success: false, message: 'An error occurred while deleting your account.'});
     }
 });
 
