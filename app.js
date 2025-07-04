@@ -8,23 +8,22 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const http = require('http'); // <<<--- Import Node's http module
-const {Server} = require("socket.io"); // <<<--- Import the socket.io Server
+const http = require('http');
+const {Server} = require("socket.io");
 
 // Import Routers
 const authRouter = require('./routes/auth');
 const apiRouter = require('./routes/api');
-const chatRouter = require('./routes/chat'); // <<<--- Import the new chat router
+const chatRouter = require('./routes/chat');
 
 const app = express();
-const server = http.createServer(app); // <<<--- Create an http server with the Express app
-const io = new Server(server); // <<<--- Create a socket.io server attached to the http server
+const server = http.createServer(app);
+const io = new Server(server);
 
 const PORT = process.env.PORT || 3000;
 
 // --- Socket.IO Connection Handling ---
-// We will create a dedicated handler for this
-require('./socket/chatHandler')(io); // <<<--- Pass the 'io' instance to our handler
+require('./socket/chatHandler')(io);
 
 // --- Other Core Middleware ---
 app.set('view engine', 'ejs');
@@ -44,7 +43,7 @@ app.use(express.urlencoded({extended: true}));
 
 // --- Specific Routes ---
 app.use('/api', apiRouter);
-app.use('/api/chat', chatRouter); // <<<--- Use the new chat router
+app.use('/api/chat', chatRouter);
 app.use('/auth', authRouter);
 
 app.get('/', (req, res) => {
