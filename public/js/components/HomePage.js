@@ -19,7 +19,7 @@ export function HomePageComponent(user) {
     if (appState.isLoggedIn) {
         const profileCrest = document.createElement('div');
         profileCrest.id = 'profile-crest-button';
-        profileCrest.className = `fixed top-20 left-4 z-30 bg-accent dark:bg-accent-hover text-white rounded-full shadow-lg cursor-pointer hover:bg-accent-hover transition-colors duration-200 w-20 h-20 flex items-center justify-center overflow-hidden border-2 border-yellow-400`;
+        profileCrest.className = `fixed top-20 left-4 z-30 bg-accent dark:bg-accent-hover text-white rounded-full shadow-lg cursor-pointer hover:scale-110 transition-transform transition-colors duration-200 w-20 h-20 flex items-center justify-center overflow-hidden border-2 border-yellow-400`;
         profileCrest.title = 'View Profile';
 
         const profilePicUrl = appState.currentUser.profilePictureUrl || '/images/default-avatar.png';
