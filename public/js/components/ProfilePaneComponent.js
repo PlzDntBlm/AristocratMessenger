@@ -3,7 +3,7 @@
  * Defines the Profile Pane component with view and edit modes.
  */
 import * as api from '../api.js';
-import { getState, setAuthState, setProfilePaneState } from '../state.js';
+import {getState, setAuthState, setProfilePaneState} from '../state.js';
 import {publish, subscribe} from '../pubsub.js';
 
 function formatDateForProfile(dateInput) {
@@ -106,6 +106,13 @@ export function ProfilePaneComponent() {
 
         paneContent.innerHTML = `
             <div id="profile-edit-error" class="text-red-500 text-sm mb-2"></div>
+            <div class="text-center mb-4">
+                <img id="profile-pic-preview" src="${currentUser.profilePictureUrl || 'https://via.placeholder.com/150/stone/stone'}" alt="Profile Picture Preview" class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-stone-200 dark:border-stone-600">
+                <label for="profile-pic-upload" class="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+                    Change Picture
+                    <input type="file" id="profile-pic-upload" class="hidden" accept="image/*">
+                </label>
+            </div>
             <div>
                 <label for="profile-edit-username" class="block text-sm font-medium text-stone-600 dark:text-stone-400">Username</label>
                 <input type="text" id="profile-edit-username" value="${currentUser.username}" class="mt-1 block w-full p-2 border border-stone-300 rounded dark:bg-stone-600 dark:border-stone-500 dark:text-gray-200 focus:ring-yellow-500 focus:border-yellow-500">
@@ -114,8 +121,20 @@ export function ProfilePaneComponent() {
                 <label for="profile-edit-email" class="block text-sm font-medium text-stone-600 dark:text-stone-400">Email</label>
                 <input type="email" id="profile-edit-email" value="${currentUser.email}" class="mt-1 block w-full p-2 border border-stone-300 rounded dark:bg-stone-600 dark:border-stone-500 dark:text-gray-200 focus:ring-yellow-500 focus:border-yellow-500">
             </div>
-            <p class="text-xs text-stone-400 dark:text-stone-500">Location and password can be changed on the full profile page (coming soon).</p>
         `;
+
+        const fileInput = pane.querySelector('#profile-pic-upload');
+        const previewImage = pane.querySelector('#profile-pic-preview');
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
 
         paneFooter.innerHTML = ''; // Clear footer
 
@@ -139,6 +158,7 @@ export function ProfilePaneComponent() {
     async function handleSaveChanges() {
         const usernameInput = pane.querySelector('#profile-edit-username');
         const emailInput = pane.querySelector('#profile-edit-email');
+        const fileInput = pane.querySelector('#profile-pic-upload');
         const errorDiv = pane.querySelector('#profile-edit-error');
         const saveButton = paneFooter.querySelector('button');
 
@@ -157,10 +177,20 @@ export function ProfilePaneComponent() {
         saveButton.textContent = 'Saving...';
 
         try {
+            if (fileInput.files[0]) {
+                const formData = new FormData();
+                formData.append('profilePicture', fileInput.files[0]);
+                const uploadResult = await api.uploadProfilePicture(formData);
+                if (!uploadResult.success) {
+                    throw new Error(uploadResult.message || 'Failed to upload picture.');
+                }
+            }
+
             const result = await api.updateUserProfile(updatedData);
+
             if (result.success) {
-                setAuthState(true, result.user); // Update global state with new user object
-                toggleEditMode(false); // Switch back to view mode
+                setAuthState(true, result.user);
+                toggleEditMode(false);
             } else {
                 throw new Error(result.message || 'Failed to save changes.');
             }
@@ -208,6 +238,9 @@ export function ProfilePaneComponent() {
 
         paneTitle.textContent = currentUser.location ? `${currentUser.username} of ${currentUser.location.name}` : `${currentUser.username}'s Profile`;
         paneContent.innerHTML = `
+            <div class="text-center mb-4">
+                 <img src="${currentUser.profilePictureUrl || 'https://via.placeholder.com/150/stone/stone'}" alt="Profile Picture" class="w-32 h-32 rounded-full mx-auto object-cover border-4 border-stone-200 dark:border-stone-600">
+            </div>
             <div class="mb-3">
                 <h3 class="text-lg font-semibold text-stone-700 dark:text-stone-300">${currentUser.username}</h3>
                 <p class="text-sm text-stone-500 dark:text-stone-400">${currentUser.email}</p>
@@ -243,7 +276,9 @@ export function ProfilePaneComponent() {
             pane.classList.add('-translate-x-full');
             if (backdropElement) {
                 backdropElement.classList.remove('opacity-100');
-                setTimeout(() => { if (backdropElement) backdropElement.style.display = 'none'; }, 300);
+                setTimeout(() => {
+                    if (backdropElement) backdropElement.style.display = 'none';
+                }, 300);
             }
         }
         // Toggle close button visibility along with the pane
@@ -252,7 +287,11 @@ export function ProfilePaneComponent() {
     }
 
     subscribe('profilePaneStateChanged', (data) => setVisibility(data.isOpen));
-    subscribe('authStateChanged', () => { if (!isEditing) { populateProfileData(); } });
+    subscribe('authStateChanged', () => {
+        if (!isEditing) {
+            populateProfileData();
+        }
+    });
 
     renderViewMode(); // Set initial content to view mode
     setVisibility(getState().isProfilePaneOpen);

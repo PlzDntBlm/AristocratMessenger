@@ -324,6 +324,40 @@ async function getChatRoomMessages(roomId) {
     return await getData(`/api/chat/rooms/${roomId}/messages`);
 }
 
+/**
+ * Uploads a new profile picture for the current user.
+ * @param {FormData} formData - The FormData object containing the image file.
+ * @returns {Promise<object>}
+ */
+async function uploadProfilePicture(formData) {
+    console.log('API: Uploading profile picture...');
+    try {
+        const response = await fetch('/api/users/profile/picture', {
+            method: 'PUT',
+            headers: {
+                // 'Content-Type' is intentionally omitted; the browser
+                // sets it correctly to 'multipart/form-data' with the boundary.
+                'Authorization': `Bearer ${getToken()}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            let errorMsg = `HTTP error! status: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.message || errorMsg;
+            } catch (e) { /* Ignore */
+            }
+            throw new Error(errorMsg);
+        }
+        return response.json();
+    } catch (error) {
+        console.error('API PUT (upload) error for /api/users/profile/picture:', error);
+        throw error;
+    }
+}
+
 export {
     getToken,
     getMyProfile,
@@ -345,4 +379,5 @@ export {
     getChatRooms,
     getChatRoomMessages,
     getChatRoomDetails,
+    uploadProfilePicture,
 };

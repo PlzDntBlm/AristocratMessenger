@@ -10,6 +10,7 @@ const {Op} = require('sequelize');
 const multer = require('multer');
 const {v4: uuidv4} = require('uuid');
 const fs = require('fs');
+const path = require('path')
 
 // --- Multer Configuration for Profile Pictures ---
 const storage = multer.diskStorage({
@@ -44,7 +45,7 @@ router.get('/users/me', isAuthenticated, async (req, res) => {
     try {
         // The user's id is available from the decoded token via `req.user.id`
         const user = await User.findByPk(req.user.id, {
-            attributes: ['id', 'username', 'email', 'createdAt', 'isAdmin'],
+            attributes: ['id', 'username', 'email', 'createdAt', 'isAdmin', 'profilePictureUrl'],
             include: [{
                 model: Location,
                 as: 'location',
@@ -125,7 +126,7 @@ router.put('/users/profile', isAuthenticated, async (req, res) => {
 
         // Fetch the full updated user profile to send back, including location
         const updatedUser = await User.findByPk(userId, {
-            attributes: ['id', 'username', 'email', 'createdAt'],
+            attributes: ['id', 'username', 'email', 'createdAt', 'profilePictureUrl'],
             include: [{
                 model: Location,
                 as: 'location',
