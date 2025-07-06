@@ -18,6 +18,7 @@
         } else {
             document.documentElement.classList.remove('dark');
         }
+        window.SOCKET_URL = "<%= typeof SOCKET_URL !== 'undefined' ? SOCKET_URL : '' %>";
     </script>
 </head>
 <body class="min-h-dvh flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">

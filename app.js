@@ -24,6 +24,7 @@ const server = http.createServer(app);
 const corsOrigin = process.env.NODE_ENV === 'production'
     ? process.env.CORS_ORIGIN_PROD
     : process.env.CORS_ORIGIN_DEV;
+const socketURL = process.env.NODE_ENV === 'production' ? process.env.SOCKET_URL_PROD : '';
 
 // Initialize socket.io server with the dynamic CORS origin
 const io = new Server(server, {
@@ -61,7 +62,7 @@ app.use('/auth', authRouter);
 
 app.get('/', (req, res) => {
     console.log("Serving index.ejs for GET /");
-    res.render('index');
+    res.render('index', {SOCKET_URL: socketURL});
 });
 
 // --- SPA Catch-All Middleware ---
@@ -75,7 +76,7 @@ const serveSpaHtml = (req, res, next) => {
         !req.path.match(/\.\w+$/)
     ) {
         console.log(`SPA Middleware: Serving index.ejs for GET ${req.path}`);
-        res.render('index');
+        res.render('index', {SOCKET_URL: socketURL});
     } else {
         console.log(`SPA Middleware: Passing request ${req.method} ${req.path} to next handler.`);
         next();
@@ -88,7 +89,7 @@ app.use((req, res, next) => {
     // This now catches everything that didn't match a file or an API route.
     // We'll serve the main app and let the client-side router handle the 404 display.
     console.log(`Final Handler: Serving index.ejs for unmatched route ${req.method} ${req.originalUrl}`);
-    res.status(404).render('index');
+    res.status(404).render('index', {SOCKET_URL: socketURL});
 });
 
 app.use((err, req, res, next) => {

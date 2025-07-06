@@ -25,9 +25,11 @@ const socketService = (() => {
                 return reject(new Error('No auth token'));
             }
 
-            const newSocket = io({
+            const connectionTarget = window.SOCKET_URL || undefined;
+
+            const newSocket = io(connectionTarget, { // Use the connection target here
                 auth: {token},
-                path: '/socket.io' // Explicitly define the connection path
+                path: '/socket.io'
             });
 
             newSocket.on('connect', () => {
