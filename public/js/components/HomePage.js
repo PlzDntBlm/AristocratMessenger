@@ -5,6 +5,8 @@
 import {MapComponent} from './MapComponent.js';
 import {ProfilePaneComponent} from './ProfilePaneComponent.js';
 import {getState} from '../state.js';
+import {subscribe} from "../pubsub.js";
+
 
 export function HomePageComponent(user) {
     const container = document.createElement('div');
@@ -33,6 +35,28 @@ export function HomePageComponent(user) {
         // A 'glow' might be: hover:shadow-yellow-500/50 or custom CSS.
         container.appendChild(profileCrest);
     }
+
+    const authSub = subscribe('authStateChanged', (newState) => {
+        if (newState.isLoggedIn && newState.currentUser) {
+            const crestImage = document.querySelector('#profile-crest-button img');
+            if (crestImage) {
+                crestImage.src = newState.currentUser.profilePictureUrl || '/images/default-avatar.png';
+            }
+        }
+    });
+
+    // To prevent memory leaks, we should clean up the subscription when the component is "destroyed".
+    // A simple way is to use a MutationObserver to detect when the component is removed from the DOM.
+    const observer = new MutationObserver((mutations) => {
+        if (!document.body.contains(container)) {
+            authSub.unsubscribe();
+            observer.disconnect();
+            console.log('HomePageComponent cleaned up its subscription.');
+        }
+    });
+
+    // Start observing the parent element for child removal
+    observer.observe(document.getElementById('content'), {childList: true})
 
 
     // --- Profile Pane ---
