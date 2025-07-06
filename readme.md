@@ -4,6 +4,81 @@
 
 Aristocrat Messenger is a web application that simulates sending and receiving messages with a medieval theme, allowing users to interact through letters, a real-time chat system, and an interactive map. The project is an immersive Single Page Application (SPA) designed to provide a unique messaging experience.
 
+# Project Requirements Checklist
+
+## Mandatory Requirements (60 points)
+
+* [ ] **Correct Submission (0p - Mandatory)**
+    * [ ] No `node_modules` folder submitted.
+    * [ ] `README.md` file is included.
+    * [ ] `README.md`: Contains a detailed description of how to start and test the project.
+    * [ ] `README.md`: Lists which criteria have been implemented and which have not.
+    * [ ] `README.md`: Includes database credentials.
+    * [ ] `README.md`: Includes credentials for two users (one with Admin rights, one without).
+    * [ ] Project runs correctly after `npm install` & `node app.js`.
+* [x] **User Management (10p)**
+    * [x] Users can be displayed.
+    * [x] Users can be added.
+    * [x] Users can be updated.
+    * [x] Users can be deleted.
+* [ ] **Design (5p)**
+    * [ ] Nice, consistent, and appealing overall design throughout all views.
+* [x] **User Registration (5p)**
+    * [x] New users can register themselves.
+    * [x] Passwords are saved encrypted in the database.
+* [x] **User Authentication (5p)**
+    * [x] Users can log in and log out (using JWT).
+* [x] **Authorization (5p)**
+    * [x] Only users with the role "Administrator" can change data.
+    * [x] Only "Administrators" can delete profiles of any user.
+    * [x] Normal users can only edit their own profile.
+* [ ] **Database Entities (10p)**
+    * [x] At least 4 other tables (entities) exist in correspondence with users.
+    * [x] Connections between entities follow an ER-diagram relationship.
+    * [x] At least two of the other tables have a full model, view, and controller implementation (for getting and displaying data).
+* [x] **Chat Functionality (5p) (works only when hosted locally. there are some problems with ports and sockete.io)**
+    * [x] Chat has different rooms.
+    * [x] Users can switch between rooms.
+* [x] **Error Handling & Stability (5p)**
+    * [x] Everything works as expected.
+    * [x] No unhandled errors (server does not crash, no "Internal Server Error" or EJS errors).
+    * [x] No blank pages are displayed.
+* [x] **Deployment (10p)**
+    * [x] Project is hosted online via Campus Cloud.
+    * [ ] The hosted project works correctly.
+    * [x] The project is shared with the lecturer with the correct rights to start and stop it.
+
+## Optional Criteria (50 points)
+
+* [x] **User Experience (5p)**
+    * [x] User-friendly interface that is easy to navigate and understand (self-explaining).
+    * [ ] Design is visually appealing, creative, and functional.
+* [x] **Documentation (5p)**
+    * [x] Functions have comments explaining their purpose.
+* [x] **Advanced Error Handling (5p)**
+    * [X] All errors are handled properly.
+    * [x] A nice/funny "404 not found" page is shown to users.
+* [x] **Code Quality (5p)**
+    * [x] Code follows naming conventions.
+    * [x] Code is tidy, clean, and self-explanatory.
+* [x] **Picture Upload (5p)**
+    * [x] Picture upload works and uses UUID for naming.
+* [x] **Profile Pictures (5p)**
+    * [x] Users can upload/update their profile pictures.
+    * [x] Old pictures are deleted upon update.
+    * [x] The new relation between the user and picture is saved in the database.
+* [x] **Chat User Names (5p)**
+    * [x] The chat uses the full name of the user when logged in.
+    * [ ] The chat uses "guest" for users who are not logged in.
+* [x] **JWT Handling (5p)**
+    * [x] JWT is passed in the HTTP header, not in cookies.
+* [x] **Data Visibility (5p)**
+    * [x] Only administrators can view all user data.
+    * [x] Users can only see that other users exist and view their "public" profiles.
+* [x] **Soft Delete (5p)**
+    * [x] Users can delete their own profile via soft-delete (e.g., setting `deleted = true`).
+
+
 ## Tech Stack
 
   * **Backend:**
