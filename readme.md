@@ -78,37 +78,27 @@ The application is built as a Single Page Application (SPA) with a distinct clie
 ## Project Structure
 
 ```
-/
-├── app.js              # Main Express server, middleware, and socket.io setup
-├── package.json
-├── tailwind.config.js
-├── .env                # Environment variables (DB credentials, JWT_SECRET)
-├── config/
-│   └── config.js       # Sequelize configuration
-├── migrations/         # Database schema migrations
-├── seeders/            # Database seed files
-├── models/             # Sequelize ORM models (User, Location, Message, etc.)
-├── public/
-│   ├── css/output.css  # Compiled Tailwind CSS
-│   └── js/             # Client-side JavaScript
-│       ├── app.js      # Main SPA logic, router, and event listeners
-│       ├── api.js      # All client-side API fetch calls
-│       ├── state.js    # Global state management
-│       ├── pubsub.js   # Publish/Subscribe event system
-│       ├── ui.js       # Core UI rendering functions
-│       ├── socketService.js # Singleton for managing the socket.io client
-│       └── components/ # All UI components (Navbar, HomePage, ProfilePane, etc.)
-├── routes/
-│   ├── api.js          # General API routes (users, messages, locations)
-│   ├── auth.js         # Authentication routes (login, register)
-│   └── chat.js         # API routes for chat rooms and messages
-├── socket/
-│   └── chatHandler.js  # Server-side logic for all socket.io events
-├── src/
-│   └── input.css       # Tailwind CSS source file
-├── uploads/            # Directory for user-uploaded profile pictures
-└── views/
-    └── index.ejs       # The single HTML shell for the SPA
+# General Application Settings
+NODE_ENV=development
+PORT=3000
+JWT_SECRET=a_very_secret_and_long_random_string_for_jwt
+
+# --- Development Environment (Local Machine) ---
+DB_HOST=your_local_db_host
+DB_PORT=your_local_db_port
+DB_USER=your_local_db_user
+DB_PASSWORD=your_local_db_password
+DB_NAME=aristocrat_messenger_db
+CORS_ORIGIN_DEV=http://localhost:3000
+
+# --- Production Environment (Hosted Server) ---
+DB_HOST_PROD=your_hosted_db_host
+DB_PORT_PROD=your_hosted_db_port
+DB_USER_PROD=your_hosted_db_user
+DB_PASSWORD_PROD=your_hosted_db_password
+DB_NAME_PROD=your_hosted_db_name
+CORS_ORIGIN_PROD=https://your_production_app_url
+SOCKET_URL_PROD=https://your_production_socket_url:port
 ```
 
 ## Setup & Running
