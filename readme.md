@@ -1,5 +1,3 @@
-Of course. Here is the updated `README.md` file with the new database seeding instructions. You can copy and paste the content directly.
-
 # Aristocrat Messenger
 
 ## Introduction
