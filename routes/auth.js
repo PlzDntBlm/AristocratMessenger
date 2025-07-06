@@ -136,7 +136,7 @@ router.post('/login', async (req, res) => {
                 as: 'location',
                 attributes: ['name', 'x', 'y', 'type', 'description']
             }],
-            attributes: ['id', 'username', 'email', 'createdAt', 'password', 'isAdmin']
+            attributes: ['id', 'username', 'email', 'createdAt', 'password', 'isAdmin', 'profilePictureUrl']
         });
 
         if (!user) {
@@ -159,7 +159,8 @@ router.post('/login', async (req, res) => {
                 email: user.email,
                 createdAt: user.createdAt,
                 location: user.location || null,
-                isAdmin: user.isAdmin
+                isAdmin: user.isAdmin,
+                profilePictureUrl: user.profilePictureUrl || null
             };
 
             res.status(200).json({
