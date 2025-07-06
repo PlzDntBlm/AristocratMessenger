@@ -26,7 +26,8 @@ const socketService = (() => {
             }
 
             const newSocket = io({
-                auth: {token}
+                auth: {token},
+                path: '/socket.io' // Explicitly define the connection path
             });
 
             newSocket.on('connect', () => {

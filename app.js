@@ -8,23 +8,34 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const http = require('http'); // <<<--- Import Node's http module
-const {Server} = require("socket.io"); // <<<--- Import the socket.io Server
+const http = require('http');
+const {Server} = require("socket.io");
 
 // Import Routers
 const authRouter = require('./routes/auth');
 const apiRouter = require('./routes/api');
-const chatRouter = require('./routes/chat'); // <<<--- Import the new chat router
+const chatRouter = require('./routes/chat');
 
 const app = express();
-const server = http.createServer(app); // <<<--- Create an http server with the Express app
-const io = new Server(server); // <<<--- Create a socket.io server attached to the http server
-
-const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
 
 // --- Socket.IO Connection Handling ---
-// We will create a dedicated handler for this
-require('./socket/chatHandler')(io); // <<<--- Pass the 'io' instance to our handler
+// Select the correct origin based on the environment
+const corsOrigin = process.env.NODE_ENV === 'production'
+    ? process.env.CORS_ORIGIN_PROD
+    : process.env.CORS_ORIGIN_DEV;
+
+// Initialize socket.io server with the dynamic CORS origin
+const io = new Server(server, {
+    cors: {
+        origin: corsOrigin,
+        methods: ["GET", "POST"]
+    }
+});
+
+require('./socket/chatHandler')(io); // Pass the 'io' instance to our handler
+
+const PORT = process.env.PORT || 3000;
 
 // --- Other Core Middleware ---
 app.set('view engine', 'ejs');
@@ -38,13 +49,14 @@ app.use('/libs/leaflet', express.static(path.join(__dirname, 'node_modules/leafl
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/images', express.static(path.join(__dirname, 'images')));
 
+
 // Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 
 // --- Specific Routes ---
 app.use('/api', apiRouter);
-app.use('/api/chat', chatRouter); // <<<--- Use the new chat router
+app.use('/api/chat', chatRouter);
 app.use('/auth', authRouter);
 
 app.get('/', (req, res) => {
@@ -85,7 +97,7 @@ app.use((err, req, res, next) => {
 });
 
 // --- Server Activation ---
-// We now use the 'server' object (with socket.io) instead of 'app' to listen
 server.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`);
+    console.log(`CORS origin for WebSockets is set to: ${corsOrigin}`); // Added for clarity
 });
