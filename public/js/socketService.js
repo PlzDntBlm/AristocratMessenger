@@ -27,9 +27,9 @@ const socketService = (() => {
 
             const connectionTarget = window.SOCKET_URL || undefined;
 
-            const newSocket = io(connectionTarget, { // Use the connection target here
+            const newSocket = io({
                 auth: {token},
-                path: '/socket.io'
+                transports: ['websocket']
             });
 
             newSocket.on('connect', () => {

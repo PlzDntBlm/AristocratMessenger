@@ -24,6 +24,8 @@
     "leaflet": "^1.9.4",
     "multer": "^2.0.1",
     "mysql2": "^3.14.0",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.2",
     "socket.io": "^4.8.1",
