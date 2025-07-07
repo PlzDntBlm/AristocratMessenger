@@ -11,6 +11,14 @@ const path = require('path');
 const http = require('http');
 const {Server} = require("socket.io");
 
+const fs = require('fs');
+
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+    console.log('Created uploads directory.');
+}
+
 // Import Routers
 const authRouter = require('./routes/auth');
 const apiRouter = require('./routes/api');
