@@ -34,14 +34,10 @@ function renderNavbar() {
             return;
         }
 
-        if (existingNav) {
-            existingNav.replaceWith(newNavElement);
-            console.log('UI: Navbar updated via PubSub.');
-        } else {
-            // Fallback: Append if no existing nav found (initial load)
-            console.log('UI: No existing navbar found, appending new one.');
-            headerElement.appendChild(newNavElement); // Simple append, works with flexbox header
-        }
+        headerElement.querySelectorAll('nav').forEach(nav => nav.remove());
+        headerElement.appendChild(newNavElement);
+
+        console.log('UI: Navbar rendered.');
     }).catch(error => console.error("Failed to load or render NavbarComponent:", error));
 }
 
