@@ -3,11 +3,11 @@
  * Manages the client-side WebSocket connection and event handling using a singleton pattern.
  */
 import {getToken} from './api.js';
-import {publish} from './pubsub.js';
 
 const socketService = (() => {
     let socket = null;
     let connectionPromise = null;
+    let messageHandler = null;
 
     const getSocket = () => {
         if (socket) {
@@ -27,7 +27,7 @@ const socketService = (() => {
 
             const connectionTarget = window.SOCKET_URL || undefined;
 
-            const newSocket = io({
+            const newSocket = io(connectionTarget, {
                 auth: {token},
                 transports: ['websocket']
             });
@@ -36,9 +36,10 @@ const socketService = (() => {
                 console.log('SocketService: Connected successfully with ID:', newSocket.id);
                 socket = newSocket;
 
-                // Set up general listeners once on creation
                 socket.on('newMessage', (message) => {
-                    publish('chatMessageReceived', message);
+                    if (messageHandler) {
+                        messageHandler(message);
+                    }
                 });
 
                 socket.on('chatError', (error) => {
@@ -48,7 +49,7 @@ const socketService = (() => {
 
                 socket.on('disconnect', () => {
                     console.log('SocketService: Disconnected.');
-                    socket = null; // Reset on disconnect
+                    socket = null;
                     connectionPromise = null;
                 });
 
@@ -71,6 +72,12 @@ const socketService = (() => {
             if (socket) {
                 socket.disconnect();
             }
+        },
+        registerMessageHandler: (handler) => {
+            messageHandler = handler;
+        },
+        unregisterMessageHandler: () => {
+            messageHandler = null;
         },
         joinRoom: async (roomId) => {
             try {

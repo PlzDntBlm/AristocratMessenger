@@ -5,7 +5,6 @@
 import * as api from '../api.js';
 import {getState} from '../state.js';
 import socketService from '../socketService.js';
-import {subscribe} from '../pubsub.js';
 
 function formatMessageDate(dateString) {
     if (!dateString) return '';
@@ -20,8 +19,6 @@ export function ChatRoomPageComponent(roomId) {
     const container = document.createElement('div');
     container.id = `component-chatroom-${roomId}`;
     container.className = 'h-[calc(100vh-200px)] w-full flex flex-col';
-
-    let messageSubscription = null;
 
     container.innerHTML = `
         <div id="chatroom-header" class="mb-4 pb-3 border-b border-border-color dark:border-dark-border-color">
@@ -86,7 +83,7 @@ export function ChatRoomPageComponent(roomId) {
             sendButton.disabled = false;
             messagesContainer.innerHTML = '';
 
-            messageSubscription = subscribe('chatMessageReceived', renderMessage);
+            socketService.registerMessageHandler(renderMessage);
 
             const [detailsResponse, messagesResponse] = await Promise.all([
                 api.getChatRoomDetails(roomId),
@@ -126,9 +123,7 @@ export function ChatRoomPageComponent(roomId) {
         if (!document.body.contains(container)) {
             console.log(`ChatRoom ${roomId}: Component removed from DOM. Cleaning up.`);
             socketService.leaveRoom(roomId);
-            if (messageSubscription) {
-                messageSubscription.unsubscribe();
-            }
+            socketService.unregisterMessageHandler();
             observer.disconnect();
         }
     });
