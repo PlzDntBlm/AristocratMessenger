@@ -13,12 +13,12 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Users', // Name of the target table
-          key: 'id',      // Column in the Users table
+          model: 'Users',
+          key: 'id',
         },
-        unique: true, // A user can only have one primary location (enforces hasOne)
+        unique: true,
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE', // If a user is deleted, their location is also removed
+        onDelete: 'CASCADE',
       },
       name: {
         type: Sequelize.STRING,
@@ -28,18 +28,15 @@ module.exports = {
       x: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        comment: 'Represents X coordinate, in "kilometers" for the game map.',
       },
       y: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        comment: 'Represents Y coordinate, in "kilometers" for the game map.',
       },
       type: {
         type: Sequelize.STRING,
         allowNull: false,
         defaultValue: 'settlement',
-        comment: 'Type of location (e.g., settlement, castle, ruin, landmark).',
       },
       description: {
         type: Sequelize.TEXT,
@@ -52,8 +49,8 @@ module.exports = {
       },
       updatedAt: {
         allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'),
+        type: Sequelize.DATE
+        // The invalid defaultValue has been removed.
       }
     });
   },

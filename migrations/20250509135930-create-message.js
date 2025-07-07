@@ -13,11 +13,11 @@ module.exports = {
         type: Sequelize.INTEGER,
         allowNull: false,
         references: {
-          model: 'Users', // Name of the target table
-          key: 'id',      // Name of the target column
+          model: 'Users',
+          key: 'id',
         },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE', // Or 'SET NULL' if you want to keep messages from deleted users, but requires senderId to be nullable
+        onDelete: 'CASCADE',
       },
       recipientId: {
         type: Sequelize.INTEGER,
@@ -27,10 +27,10 @@ module.exports = {
           key: 'id',
         },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE', // Or 'SET NULL', similar considerations as senderId
+        onDelete: 'CASCADE',
       },
       subject: {
-        type: Sequelize.STRING, // Sequelize.STRING by default is VARCHAR(255)
+        type: Sequelize.STRING,
         allowNull: false,
       },
       body: {
@@ -44,21 +44,22 @@ module.exports = {
       },
       sentAt: {
         type: Sequelize.DATE,
-        allowNull: true, // A draft message might not have a sentAt timestamp
+        allowNull: true,
       },
       readAt: {
         type: Sequelize.DATE,
-        allowNull: true, // Message is not read initially
+        allowNull: true,
       },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'), // Ensure default on DB level
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
       },
       updatedAt: {
         allowNull: false,
         type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'), // Ensure default on DB level
+        // The invalid defaultValue has been removed.
+        // Sequelize will manage this column automatically.
       }
     });
   },
