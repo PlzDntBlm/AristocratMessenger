@@ -8,7 +8,7 @@ node_modules/
 
 # Sequelize configuration (JavaScript version)
 # config/config.json # Remove or comment out if you switched
-config/config.js
+#config/config.js
 .sequelizerc
 
 # Build artifacts
